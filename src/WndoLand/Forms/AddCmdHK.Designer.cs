@@ -36,6 +36,7 @@ namespace WndoLand
             addModifierKeys = new Button();
             textBox1 = new TextBox();
             done = new Button();
+            cancelButton = new Button();
             label4 = new Label();
             openWindow = new CheckBox();
             errMsg = new Label();
@@ -115,14 +116,24 @@ namespace WndoLand
             // 
             // done
             // 
-            done.Location = new Point(237, 226);
+            done.Location = new Point(156, 226);
             done.Name = "done";
             done.Size = new Size(75, 23);
             done.TabIndex = 15;
-            done.Text = "Done";
+            done.Text = "Save";
             done.UseVisualStyleBackColor = true;
             done.Tag = "primary";
             done.Click += done_Click;
+            //
+            // cancelButton
+            //
+            cancelButton.DialogResult = DialogResult.Cancel;
+            cancelButton.Location = new Point(237, 226);
+            cancelButton.Name = "cancelButton";
+            cancelButton.Size = new Size(75, 23);
+            cancelButton.TabIndex = 19;
+            cancelButton.Text = "Cancel";
+            cancelButton.UseVisualStyleBackColor = true;
             // 
             // label4
             // 
@@ -147,7 +158,10 @@ namespace WndoLand
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
+            AcceptButton = done;
+            CancelButton = cancelButton;
             ClientSize = new Size(324, 261);
+            Controls.Add(cancelButton);
             Controls.Add(errMsg);
             Controls.Add(openWindow);
             Controls.Add(label4);
@@ -176,6 +190,7 @@ namespace WndoLand
         private Button addModifierKeys;
         private TextBox textBox1;
         private Button done;
+        private Button cancelButton;
         private Label label4;
         private CheckBox openWindow;
         private Label errMsg;

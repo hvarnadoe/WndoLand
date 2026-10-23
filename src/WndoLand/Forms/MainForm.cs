@@ -394,7 +394,7 @@ namespace WndoLand
 
         private void settingsButton_Click(object sender, EventArgs e)
         {
-            using var form = new SettingsForm();
+            using var form = new SettingsForm(_updates);
             if (form.ShowDialog(this) == DialogResult.OK)
                 _workspace.ApplySettings();
         }

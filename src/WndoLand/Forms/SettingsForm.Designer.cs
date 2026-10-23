@@ -41,6 +41,9 @@ namespace WndoLand
             saveButton = new Button();
             cancelButton = new Button();
             settingsMsg = new Label();
+            versionLabel = new Label();
+            checkUpdatesButton = new Button();
+            updateMsg = new Label();
             colorDialog = new ColorDialog();
             ((System.ComponentModel.ISupportInitialize)borderThickness).BeginInit();
             ((System.ComponentModel.ISupportInitialize)gapSize).BeginInit();
@@ -142,9 +145,28 @@ namespace WndoLand
             editRulesButton.UseVisualStyleBackColor = true;
             editRulesButton.Click += editRulesButton_Click;
             //
+            // checkUpdatesButton
+            //
+            checkUpdatesButton.Location = new Point(12, 250);
+            checkUpdatesButton.Name = "checkUpdatesButton";
+            checkUpdatesButton.Size = new Size(320, 28);
+            checkUpdatesButton.TabIndex = 14;
+            checkUpdatesButton.Text = "Check for updates";
+            checkUpdatesButton.UseVisualStyleBackColor = true;
+            checkUpdatesButton.Click += checkUpdatesButton_Click;
+            //
+            // updateMsg
+            //
+            updateMsg.AutoSize = true;
+            updateMsg.Location = new Point(12, 284);
+            updateMsg.Name = "updateMsg";
+            updateMsg.Size = new Size(0, 15);
+            updateMsg.TabIndex = 15;
+            updateMsg.Tag = "muted";
+            //
             // saveButton
             //
-            saveButton.Location = new Point(176, 289);
+            saveButton.Location = new Point(176, 329);
             saveButton.Name = "saveButton";
             saveButton.Size = new Size(75, 23);
             saveButton.TabIndex = 9;
@@ -156,7 +178,7 @@ namespace WndoLand
             // cancelButton
             //
             cancelButton.DialogResult = DialogResult.Cancel;
-            cancelButton.Location = new Point(257, 289);
+            cancelButton.Location = new Point(257, 329);
             cancelButton.Name = "cancelButton";
             cancelButton.Size = new Size(75, 23);
             cancelButton.TabIndex = 10;
@@ -167,10 +189,19 @@ namespace WndoLand
             //
             settingsMsg.AutoSize = true;
             settingsMsg.ForeColor = Color.Firebrick;
-            settingsMsg.Location = new Point(12, 257);
+            settingsMsg.Location = new Point(12, 304);
             settingsMsg.Name = "settingsMsg";
             settingsMsg.Size = new Size(0, 15);
             settingsMsg.TabIndex = 11;
+            //
+            // versionLabel
+            //
+            versionLabel.AutoSize = true;
+            versionLabel.Location = new Point(12, 333);
+            versionLabel.Name = "versionLabel";
+            versionLabel.Size = new Size(0, 15);
+            versionLabel.TabIndex = 13;
+            versionLabel.Tag = "muted";
             //
             // SettingsForm
             //
@@ -178,7 +209,10 @@ namespace WndoLand
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             CancelButton = cancelButton;
-            ClientSize = new Size(344, 324);
+            ClientSize = new Size(344, 364);
+            Controls.Add(versionLabel);
+            Controls.Add(updateMsg);
+            Controls.Add(checkUpdatesButton);
             Controls.Add(settingsMsg);
             Controls.Add(cancelButton);
             Controls.Add(saveButton);
@@ -219,6 +253,9 @@ namespace WndoLand
         private Button saveButton;
         private Button cancelButton;
         private Label settingsMsg;
+        private Label versionLabel;
+        private Button checkUpdatesButton;
+        private Label updateMsg;
         private ColorDialog colorDialog;
     }
 }

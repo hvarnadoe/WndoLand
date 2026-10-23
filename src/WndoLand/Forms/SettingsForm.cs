@@ -4,12 +4,20 @@ namespace WndoLand
 {
     public partial class SettingsForm : Form
     {
+        private readonly UpdateService _updates;
         private Color _color;
 
-        public SettingsForm()
+        internal SettingsForm(UpdateService updates)
         {
+            _updates = updates;
             InitializeComponent();
             Theme.Apply(this);
+
+            var version = System.Reflection.Assembly.GetExecutingAssembly()
+                .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+                .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+                .FirstOrDefault()?.InformationalVersion.Split('+')[0];
+            versionLabel.Text = $"v{version ?? "unknown"}";
 
             var s = Settings.Current;
             SetColor(s.BorderColorValue);
@@ -32,6 +40,23 @@ namespace WndoLand
             colorDialog.Color = _color;
             if (colorDialog.ShowDialog(this) == DialogResult.OK)
                 SetColor(colorDialog.Color);
+        }
+
+        private async void checkUpdatesButton_Click(object sender, EventArgs e)
+        {
+            if (!_updates.IsInstalled)
+            {
+                updateMsg.Text = "Updates are only available in the installed version.";
+                return;
+            }
+
+            checkUpdatesButton.Enabled = false;
+            updateMsg.Text = "Checking...";
+            bool found = await _updates.CheckAsync();
+            updateMsg.Text = found
+                ? $"Version {_updates.PendingVersion} is ready. Use the tray menu to restart and install it."
+                : "You're up to date.";
+            checkUpdatesButton.Enabled = true;
         }
 
         private void editRulesButton_Click(object sender, EventArgs e)

@@ -43,13 +43,47 @@ namespace WndoLand
                     case Button b: StyleButton(b); break;
                     case TextBox t: t.BackColor = Raised; t.ForeColor = Text; t.BorderStyle = BorderStyle.FixedSingle; break;
                     case NumericUpDown n: n.BackColor = Raised; n.ForeColor = Text; n.BorderStyle = BorderStyle.FixedSingle; break;
-                    case CheckBox cb: cb.FlatStyle = FlatStyle.Flat; cb.ForeColor = Text; cb.BackColor = Color.Transparent; cb.Cursor = Cursors.Hand; break;
+                    case CheckBox cb: StyleCheckBox(cb); break;
                     case Label l: StyleLabel(l); break;
                     case DataGridView g: StyleGrid(g); break;
                     default: c.BackColor = Background; c.ForeColor = Text; break;
                 }
                 StyleChildren(c);
             }
+        }
+
+        private static void StyleCheckBox(CheckBox cb)
+        {
+            cb.FlatStyle = FlatStyle.Flat;
+            cb.ForeColor = Text;
+            cb.BackColor = Color.Transparent;
+            cb.Cursor = Cursors.Hand;
+            cb.Paint += (_, e) =>
+            {
+                // Redraw the box with a black check; the flat style tints it with the (light) text color
+                // and paints its own box underneath, so wipe the whole control and draw box + text ourselves
+                const int size = 13;
+                var box = new Rectangle(1, (cb.Height - size) / 2, size, size);
+                var g = e.Graphics;
+                g.Clear(cb.Parent?.BackColor ?? Background);
+                TextRenderer.DrawText(g, cb.Text, cb.Font,
+                    new Rectangle(size + 6, 0, cb.Width - size - 6, cb.Height), cb.ForeColor,
+                    TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.NoPadding);
+                using (var brush = new SolidBrush(Color.FromArgb(0xF2, 0xF2, 0xF4))) g.FillRectangle(brush, box);
+                using (var pen = new Pen(Border)) g.DrawRectangle(pen, box.X, box.Y, box.Width - 1, box.Height - 1);
+
+                if (cb.Checked)
+                {
+                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    using var pen = new Pen(Color.Black, 2f);
+                    g.DrawLines(pen, new[]
+                    {
+                        new Point(box.X + 3, box.Y + 7),
+                        new Point(box.X + 5, box.Y + 9),
+                        new Point(box.X + 10, box.Y + 4)
+                    });
+                }
+            };
         }
 
         private static void StyleLabel(Label l)

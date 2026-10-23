@@ -29,6 +29,7 @@ namespace WndoLand
         private void InitializeComponent()
         {
             done = new Button();
+            cancelButton = new Button();
             openFileDialog1 = new OpenFileDialog();
             fileselect = new Button();
             addModifierKeys = new Button();
@@ -43,14 +44,24 @@ namespace WndoLand
             // 
             // done
             // 
-            done.Location = new Point(233, 225);
+            done.Location = new Point(152, 225);
             done.Name = "done";
             done.Size = new Size(75, 23);
             done.TabIndex = 0;
-            done.Text = "Done";
+            done.Text = "Save";
             done.UseVisualStyleBackColor = true;
             done.Tag = "primary";
             done.Click += done_Click;
+            //
+            // cancelButton
+            //
+            cancelButton.DialogResult = DialogResult.Cancel;
+            cancelButton.Location = new Point(233, 225);
+            cancelButton.Name = "cancelButton";
+            cancelButton.Size = new Size(75, 23);
+            cancelButton.TabIndex = 10;
+            cancelButton.Text = "Cancel";
+            cancelButton.UseVisualStyleBackColor = true;
             // 
             // openFileDialog1
             // 
@@ -143,7 +154,10 @@ namespace WndoLand
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
+            AcceptButton = done;
+            CancelButton = cancelButton;
             ClientSize = new Size(324, 261);
+            Controls.Add(cancelButton);
             Controls.Add(selectedProgram);
             Controls.Add(errMsg);
             Controls.Add(label2);
@@ -164,6 +178,7 @@ namespace WndoLand
         #endregion
 
         private Button done;
+        private Button cancelButton;
         private OpenFileDialog openFileDialog1;
         private Button fileselect;
         private Button addModifierKeys;

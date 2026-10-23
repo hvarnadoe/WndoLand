@@ -93,3 +93,15 @@ jobs:
             --tag "v$v" \
             --releaseName "WndoLand v$v" \
             --targetCommitish "$GITHUB_SHA"
+
+      - name: Prune old releases
+        # Keep the 3 newest releases; delete the rest along with their tags.
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release list --repo "${{ github.repository }}" --limit 100 \
+            --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[3:] | .[].tagName' |
+          while read -r tag; do
+            echo "Deleting release $tag"
+            gh release delete "$tag" --repo "${{ github.repository }}" --yes --cleanup-tag
+          done
