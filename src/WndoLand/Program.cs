@@ -7,11 +7,14 @@ namespace WndoLand
         [STAThread]
         static void Main()
         {
-            // Must run first: handles the installer's install/update/uninstall hooks and may exit the process.
             VelopackApp.Build()
                 .OnFirstRun(_ => StartupRegistration.Set(true))
                 .OnBeforeUninstallFastCallback(_ => StartupRegistration.Set(false))
                 .Run();
+
+            using var singleInstance = new Mutex(true, @"Local\WndoLand.SingleInstance", out var isFirstInstance);
+            if (!isFirstInstance)
+                return;
 
             Log.Init();
 
@@ -30,6 +33,7 @@ namespace WndoLand
             try
             {
                 Log.LogStartup();
+                StartupRegistration.MigrateToTask();
                 ApplicationConfiguration.Initialize();
                 Application.Run(new MainForm());
                 Log.Info("Application exited normally");
