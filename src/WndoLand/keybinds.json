@@ -1,0 +1,459 @@
+{
+  "shortcuts": [
+    {
+      "name": "Launch Terminal",
+      "modifiers": [
+        "0x0001"
+      ],
+      "key": "0x57",
+      "target": 1,
+      "action": "0x10",
+      "process_path": "wt",
+      "command": null,
+      "target_workspace": 0,
+      "direction": null
+    },
+    {
+      "name": "Switch To Workspace 1",
+      "modifiers": [
+        "0x0001"
+      ],
+      "key": "0x31",
+      "target": 3,
+      "action": "0x30",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 1,
+      "direction": null
+    },
+    {
+      "name": "Switch To Workspace 2",
+      "modifiers": [
+        "0x0001"
+      ],
+      "key": "0x32",
+      "target": 3,
+      "action": "0x30",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 2,
+      "direction": null
+    },
+    {
+      "name": "Switch To Workspace 3",
+      "modifiers": [
+        "0x0001"
+      ],
+      "key": "0x33",
+      "target": 3,
+      "action": "0x30",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 3,
+      "direction": null
+    },
+    {
+      "name": "Switch To Workspace 4",
+      "modifiers": [
+        "0x0001"
+      ],
+      "key": "0x34",
+      "target": 3,
+      "action": "0x30",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 4,
+      "direction": null
+    },
+    {
+      "name": "Switch To Workspace 5",
+      "modifiers": [
+        "0x0001"
+      ],
+      "key": "0x35",
+      "target": 3,
+      "action": "0x30",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 5,
+      "direction": null
+    },
+    {
+      "name": "Switch To Workspace 6",
+      "modifiers": [
+        "0x0001"
+      ],
+      "key": "0x36",
+      "target": 3,
+      "action": "0x30",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 6,
+      "direction": null
+    },
+    {
+      "name": "Switch To Workspace 7",
+      "modifiers": [
+        "0x0001"
+      ],
+      "key": "0x37",
+      "target": 3,
+      "action": "0x30",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 7,
+      "direction": null
+    },
+    {
+      "name": "Switch To Workspace 8",
+      "modifiers": [
+        "0x0001"
+      ],
+      "key": "0x38",
+      "target": 3,
+      "action": "0x30",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 8,
+      "direction": null
+    },
+    {
+      "name": "Switch To Workspace 9",
+      "modifiers": [
+        "0x0001"
+      ],
+      "key": "0x39",
+      "target": 3,
+      "action": "0x30",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 9,
+      "direction": null
+    },
+    {
+      "name": "Switch To Workspace 10",
+      "modifiers": [
+        "0x0001"
+      ],
+      "key": "0x30",
+      "target": 3,
+      "action": "0x30",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 10,
+      "direction": null
+    },
+    {
+      "name": "Send Window To Workspace 1",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x31",
+      "target": 0,
+      "action": "0x1",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 1,
+      "direction": null
+    },
+    {
+      "name": "Send Window To Workspace 2",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x32",
+      "target": 0,
+      "action": "0x1",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 2,
+      "direction": null
+    },
+    {
+      "name": "Send Window To Workspace 3",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x33",
+      "target": 0,
+      "action": "0x1",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 3,
+      "direction": null
+    },
+    {
+      "name": "Send Window To Workspace 4",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x34",
+      "target": 0,
+      "action": "0x1",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 4,
+      "direction": null
+    },
+    {
+      "name": "Send Window To Workspace 5",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x35",
+      "target": 0,
+      "action": "0x1",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 5,
+      "direction": null
+    },
+    {
+      "name": "Send Window To Workspace 6",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x36",
+      "target": 0,
+      "action": "0x1",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 6,
+      "direction": null
+    },
+    {
+      "name": "Send Window To Workspace 7",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x37",
+      "target": 0,
+      "action": "0x1",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 7,
+      "direction": null
+    },
+    {
+      "name": "Send Window To Workspace 8",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x38",
+      "target": 0,
+      "action": "0x1",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 8,
+      "direction": null
+    },
+    {
+      "name": "Send Window To Workspace 9",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x39",
+      "target": 0,
+      "action": "0x1",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 9,
+      "direction": null
+    },
+    {
+      "name": "Send Window To Workspace 10",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x30",
+      "target": 0,
+      "action": "0x1",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 10,
+      "direction": null
+    },
+    {
+      "name": "Close Active Window",
+      "modifiers": [
+        "0x0001"
+      ],
+      "key": "0x51",
+      "target": 0,
+      "action": "0x4",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": null
+    },
+    {
+      "name": "Focus Window Left",
+      "modifiers": [
+        "0x0001"
+      ],
+      "key": "0x25",
+      "target": 0,
+      "action": "0x6",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": "Left"
+    },
+    {
+      "name": "Focus Window Up",
+      "modifiers": [
+        "0x0001"
+      ],
+      "key": "0x26",
+      "target": 0,
+      "action": "0x6",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": "Up"
+    },
+    {
+      "name": "Focus Window Right",
+      "modifiers": [
+        "0x0001"
+      ],
+      "key": "0x27",
+      "target": 0,
+      "action": "0x6",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": "Right"
+    },
+    {
+      "name": "Focus Window Down",
+      "modifiers": [
+        "0x0001"
+      ],
+      "key": "0x28",
+      "target": 0,
+      "action": "0x6",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": "Down"
+    },
+    {
+      "name": "Swap Window Left",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x25",
+      "target": 0,
+      "action": "0x0",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": "Left"
+    },
+    {
+      "name": "Swap Window Up",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x26",
+      "target": 0,
+      "action": "0x0",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": "Up"
+    },
+    {
+      "name": "Swap Window Right",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x27",
+      "target": 0,
+      "action": "0x0",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": "Right"
+    },
+    {
+      "name": "Swap Window Down",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x28",
+      "target": 0,
+      "action": "0x0",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": "Down"
+    },
+    {
+      "name": "Toggle Floating Window",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x46",
+      "target": 0,
+      "action": "0x7",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": null
+    },
+    {
+      "name": "Toggle Fullscreen Window",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0xD",
+      "target": 0,
+      "action": "0x8",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": null
+    },
+    {
+      "name": "Move Window To Next Monitor",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x4E",
+      "target": 0,
+      "action": "0x9",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": null
+    },
+    {
+      "name": "Open WndoLand Window",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x57",
+      "target": 4,
+      "action": "0x40",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": null
+    },
+    {
+      "name": "Force Close Active Window",
+      "modifiers": [
+        "0x0005"
+      ],
+      "key": "0x51",
+      "target": 0,
+      "action": "0xA",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": null
+    }
+  ]
+}
