@@ -9,6 +9,7 @@ namespace WndoLand
         {
             // Must run first: handles the installer's install/update/uninstall hooks and may exit the process.
             VelopackApp.Build()
+                .OnFirstRun(_ => StartupRegistration.Set(true))
                 .OnBeforeUninstallFastCallback(_ => StartupRegistration.Set(false))
                 .Run();
 
