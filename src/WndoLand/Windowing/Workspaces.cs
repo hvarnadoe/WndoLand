@@ -575,6 +575,17 @@ namespace WndoLand
                     Log.Debug($"  cell {cell}: hwnd=0x{hwnd:X} is maximized, restoring before placing");
                     ShowWindow(hwnd, NCMDSHOW.SW_RESTORE);
                 }
+
+                if (GetWindowRect(hwnd, out RECT outer)
+                    && DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, out RECT visible, Marshal.SizeOf<RECT>()) == 0)
+                {
+                    r = Rectangle.FromLTRB(
+                        r.Left - (visible.left - outer.left),
+                        r.Top - (visible.top - outer.top),
+                        r.Right + (outer.right - visible.right),
+                        r.Bottom + (outer.bottom - visible.bottom));
+                }
+
                 if (SetWindowPos(hwnd, IntPtr.Zero, r.Left, r.Top, r.Width, r.Height, SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS))
                     Log.Debug($"  cell {cell}: hwnd=0x{hwnd:X} -> {Describe.Rect(r.Left, r.Top, r.Right, r.Bottom)}");
                 else
