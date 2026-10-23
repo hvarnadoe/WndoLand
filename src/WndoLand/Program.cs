@@ -1,3 +1,5 @@
+using Velopack;
+
 namespace WndoLand
 {
     internal static class Program
@@ -5,6 +7,11 @@ namespace WndoLand
         [STAThread]
         static void Main()
         {
+            // Must run first: handles the installer's install/update/uninstall hooks and may exit the process.
+            VelopackApp.Build()
+                .OnBeforeUninstallFastCallback(_ => StartupRegistration.Set(false))
+                .Run();
+
             Log.Init();
 
             Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);

@@ -47,6 +47,11 @@ jobs:
           echo "version=$next" >> "$GITHUB_OUTPUT"
           echo "Next version: $next (previous: ${latest:-none})"
 
+      - name: Install vpk
+        run: |
+          dotnet tool install -g vpk --version 1.2.161
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
       - name: Publish
         run: >
           dotnet publish src/WndoLand/WndoLand.csproj
@@ -57,19 +62,34 @@ jobs:
           -p:Version=${{ steps.version.outputs.version }}
           -o publish
 
-      - name: Package
+      - name: Fetch previous release
+        # Lets vpk build small delta packages. The first release has nothing to fetch.
         run: |
-          v="${{ steps.version.outputs.version }}"
-          mkdir -p dist
-          7z a "dist/WndoLand-$v-win-x64.zip" ./publish/*
-          (cd dist && sha256sum "WndoLand-$v-win-x64.zip" > "WndoLand-$v-win-x64.zip.sha256")
+          vpk download github \
+            --repoUrl "https://github.com/${{ github.repository }}" \
+            --token "${{ github.token }}" \
+            --outputDir releases || echo "No previous release to download"
 
-      - name: Create release
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Pack
+        run: |
+          vpk pack \
+            --packId WndoLandApp \
+            --packTitle WndoLand \
+            --packAuthors WndoLand \
+            --packVersion "${{ steps.version.outputs.version }}" \
+            --packDir publish \
+            --mainExe WndoLand.exe \
+            --icon src/WndoLand/Assets/wndoland.ico \
+            --outputDir releases
+
+      - name: Upload release
         run: |
           v="${{ steps.version.outputs.version }}"
-          gh release create "v$v" dist/* \
-            --target "$GITHUB_SHA" \
-            --title "WndoLand v$v" \
-            --generate-notes
+          vpk upload github \
+            --repoUrl "https://github.com/${{ github.repository }}" \
+            --token "${{ github.token }}" \
+            --outputDir releases \
+            --publish \
+            --tag "v$v" \
+            --releaseName "WndoLand v$v" \
+            --targetCommitish "$GITHUB_SHA"

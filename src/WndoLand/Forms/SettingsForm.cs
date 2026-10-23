@@ -17,6 +17,7 @@ namespace WndoLand
             gapSize.Value = Math.Clamp(s.Gap, (int)gapSize.Minimum, (int)gapSize.Maximum);
             stripTitleBars.Checked = s.StripTitleBars;
             startWithWindows.Checked = StartupRegistration.IsEnabled;
+            autoUpdate.Checked = s.AutoUpdate;
         }
 
         private void SetColor(Color color)
@@ -56,7 +57,8 @@ namespace WndoLand
                     BorderColor = $"#{_color.R:X2}{_color.G:X2}{_color.B:X2}",
                     BorderThickness = (int)borderThickness.Value,
                     Gap = (int)gapSize.Value,
-                    StripTitleBars = stripTitleBars.Checked
+                    StripTitleBars = stripTitleBars.Checked,
+                    AutoUpdate = autoUpdate.Checked
                 }.Save();
 
                 if (startWithWindows.Checked != StartupRegistration.IsEnabled)

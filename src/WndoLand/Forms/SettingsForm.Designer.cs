@@ -36,6 +36,7 @@ namespace WndoLand
             gapSize = new NumericUpDown();
             stripTitleBars = new CheckBox();
             startWithWindows = new CheckBox();
+            autoUpdate = new CheckBox();
             editRulesButton = new Button();
             saveButton = new Button();
             cancelButton = new Button();
@@ -121,9 +122,19 @@ namespace WndoLand
             startWithWindows.Text = "Start with Windows";
             startWithWindows.UseVisualStyleBackColor = true;
             //
+            // autoUpdate
+            //
+            autoUpdate.AutoSize = true;
+            autoUpdate.Location = new Point(12, 179);
+            autoUpdate.Name = "autoUpdate";
+            autoUpdate.Size = new Size(190, 19);
+            autoUpdate.TabIndex = 12;
+            autoUpdate.Text = "Install updates automatically";
+            autoUpdate.UseVisualStyleBackColor = true;
+            //
             // editRulesButton
             //
-            editRulesButton.Location = new Point(12, 187);
+            editRulesButton.Location = new Point(12, 214);
             editRulesButton.Name = "editRulesButton";
             editRulesButton.Size = new Size(320, 28);
             editRulesButton.TabIndex = 8;
@@ -133,7 +144,7 @@ namespace WndoLand
             //
             // saveButton
             //
-            saveButton.Location = new Point(176, 262);
+            saveButton.Location = new Point(176, 289);
             saveButton.Name = "saveButton";
             saveButton.Size = new Size(75, 23);
             saveButton.TabIndex = 9;
@@ -145,7 +156,7 @@ namespace WndoLand
             // cancelButton
             //
             cancelButton.DialogResult = DialogResult.Cancel;
-            cancelButton.Location = new Point(257, 262);
+            cancelButton.Location = new Point(257, 289);
             cancelButton.Name = "cancelButton";
             cancelButton.Size = new Size(75, 23);
             cancelButton.TabIndex = 10;
@@ -156,7 +167,7 @@ namespace WndoLand
             //
             settingsMsg.AutoSize = true;
             settingsMsg.ForeColor = Color.Firebrick;
-            settingsMsg.Location = new Point(12, 230);
+            settingsMsg.Location = new Point(12, 257);
             settingsMsg.Name = "settingsMsg";
             settingsMsg.Size = new Size(0, 15);
             settingsMsg.TabIndex = 11;
@@ -167,11 +178,12 @@ namespace WndoLand
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             CancelButton = cancelButton;
-            ClientSize = new Size(344, 297);
+            ClientSize = new Size(344, 324);
             Controls.Add(settingsMsg);
             Controls.Add(cancelButton);
             Controls.Add(saveButton);
             Controls.Add(editRulesButton);
+            Controls.Add(autoUpdate);
             Controls.Add(startWithWindows);
             Controls.Add(stripTitleBars);
             Controls.Add(gapSize);
@@ -202,6 +214,7 @@ namespace WndoLand
         private NumericUpDown gapSize;
         private CheckBox stripTitleBars;
         private CheckBox startWithWindows;
+        private CheckBox autoUpdate;
         private Button editRulesButton;
         private Button saveButton;
         private Button cancelButton;

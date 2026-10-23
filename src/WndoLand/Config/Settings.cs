@@ -20,6 +20,9 @@ namespace WndoLand
         [JsonPropertyName("gap")]
         public int Gap { get; set; } = 0;
 
+        [JsonPropertyName("auto_update")]
+        public bool AutoUpdate { get; set; } = true;
+
         [JsonIgnore]
         public Color BorderColorValue
         {
@@ -50,7 +53,7 @@ namespace WndoLand
         {
             File.WriteAllText(AppPaths.SettingsFile, JsonSerializer.Serialize(this, JsonOptions));
             Current = this;
-            Log.Info($"Saved settings: color={BorderColor} thickness={BorderThickness} strip={StripTitleBars} gap={Gap}");
+            Log.Info($"Saved settings: color={BorderColor} thickness={BorderThickness} strip={StripTitleBars} gap={Gap} autoUpdate={AutoUpdate}");
         }
     }
 }

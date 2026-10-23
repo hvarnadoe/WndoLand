@@ -10,6 +10,7 @@ namespace WndoLand
     public partial class MainForm : Form
     {
         private readonly NotifyIcon _tray;
+        private readonly UpdateService _updates = new();
         private bool _reallyExit;
         private bool _allowVisible = false;
         private Workspaces _workspace;
@@ -43,6 +44,16 @@ namespace WndoLand
 
             var menu = new ContextMenuStrip();
             menu.Items.Add("Open", null, (_, _) => ShowWindow());
+            var installUpdate = new ToolStripMenuItem("Restart to install update") { Visible = false };
+            installUpdate.Click += (_, _) => _updates.ApplyPending();
+            menu.Items.Add(installUpdate);
+            menu.Items.Add("Check for updates", null, async (_, _) =>
+            {
+                if (!_updates.IsInstalled)
+                    _tray!.ShowBalloonTip(3000, "WndoLand", "Updates are only available in the installed version.", ToolTipIcon.Info);
+                else if (!await _updates.CheckAsync())
+                    _tray!.ShowBalloonTip(3000, "WndoLand", "You're up to date.", ToolTipIcon.Info);
+            });
             menu.Items.Add("Exit", null, (_, _) => { _reallyExit = true; Close(); });
 
             _tray = new NotifyIcon
@@ -53,6 +64,14 @@ namespace WndoLand
                 Visible = true
             };
             _tray.DoubleClick += (_, _) => ShowWindow();
+
+            _updates.UpdateReady += version =>
+            {
+                installUpdate.Text = $"Restart to install update ({version})";
+                installUpdate.Visible = true;
+                _tray.ShowBalloonTip(5000, "WndoLand", $"Version {version} is ready. Use the tray menu to restart and install it.", ToolTipIcon.Info);
+            };
+            _updates.Start();
 
             _workspace = new Workspaces { WindowPruned = hwnd => _seen.Remove(hwnd) };
             _workspace.WorkspaceChanged += num => _overlay.Flash(num);
@@ -179,6 +198,7 @@ namespace WndoLand
 
             Watchdog.Stop();
             Borders.RestoreAll();
+            _updates.Dispose();
             _tray.Visible = false;
             _tray.Dispose();
             _overlay.Dispose();
