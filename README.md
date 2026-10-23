@@ -30,3 +30,7 @@ The app starts hidden in the tray. Open its window from the tray icon or with `A
 | `Alt+Shift` + `N` | Move window to the next monitor |
 | `Alt` + `W` | Launch Terminal |
 | `Alt+Shift` + `W` | Show or hide the WndoLand window |
+
+## Installing
+
+Download the most recent setup.exe from the releases tab and run it. By default it will be registered to start with windows this can be disabled in the settings. You can view the control panel with `Alt + Shift + W`.
