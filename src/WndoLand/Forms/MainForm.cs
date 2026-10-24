@@ -20,6 +20,7 @@ namespace WndoLand
 
         readonly WinEventDelegate _callback;
         IntPtr _hook;
+        IntPtr _foregroundHook;
         readonly HashSet<IntPtr> _seen = new();
 
         private enum HotkeyId
@@ -74,7 +75,8 @@ namespace WndoLand
             _updates.Start();
 
             _workspace = new Workspaces { WindowPruned = hwnd => _seen.Remove(hwnd) };
-            _workspace.WorkspaceChanged += num => _overlay.Flash(num);
+            _workspace.WorkspaceChanged += (num, monitor) => _overlay.Flash(num, monitor);
+            Microsoft.Win32.SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
 
             var shortcuts = LoadKeybindsFromFile();
             Log.Info($"Loaded {shortcuts.Count} keybind(s)");
@@ -90,6 +92,16 @@ namespace WndoLand
             _activeBorder.Start();
 
             Watchdog.Start();
+        }
+
+        private void OnDisplaySettingsChanged(object? sender, EventArgs e)
+        {
+            if (IsHandleCreated)
+                BeginInvoke(() =>
+                {
+                    Log.Info("Display configuration changed");
+                    _workspace.OnDisplaySettingsChanged();
+                });
         }
 
         private void SaveLayout() => StateStore.Save(_workspace.Snapshot());
@@ -196,6 +208,7 @@ namespace WndoLand
                 return;
             }
 
+            Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
             Watchdog.Stop();
             Borders.RestoreAll();
             _updates.Dispose();
@@ -216,6 +229,11 @@ namespace WndoLand
             else
                 Log.Info($"WinEvent hook installed (form handle 0x{Handle:X})");
 
+            _foregroundHook = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, IntPtr.Zero, _callback,
+                                              0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
+            if (_foregroundHook == IntPtr.Zero)
+                Log.Error($"SetWinEventHook (foreground) failed, Win32 error {Marshal.GetLastWin32Error()}");
+
             if (_keybindActions is { Count: > 0 })
             {
                 Log.Warn("Form handle was recreated; re-registering hot keys");
@@ -231,6 +249,11 @@ namespace WndoLand
             {
                 UnhookWinEvent(_hook);
                 _hook = IntPtr.Zero;
+            }
+            if (_foregroundHook != IntPtr.Zero)
+            {
+                UnhookWinEvent(_foregroundHook);
+                _foregroundHook = IntPtr.Zero;
             }
             base.OnHandleDestroyed(e);
         }
@@ -257,6 +280,28 @@ namespace WndoLand
             return cls.ToString();
         }
 
+        private static readonly bool SelfElevated = new System.Security.Principal.WindowsPrincipal(
+            System.Security.Principal.WindowsIdentity.GetCurrent()).IsInRole(System.Security.Principal.WindowsBuiltInRole.Administrator);
+
+        // UIPI stops a non-elevated process from moving an elevated process's windows (MoveWindow fails with error 0)
+        private static bool IsElevatedProcessWeCannotMove(uint pid)
+        {
+            if (SelfElevated) return false;
+
+            nint proc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+            if (proc == 0) return true;
+            try
+            {
+                if (!OpenProcessToken(proc, TOKEN_QUERY, out nint token)) return true;
+                try
+                {
+                    return GetTokenInformation(token, TokenElevation, out int elevated, sizeof(int), out _) && elevated != 0;
+                }
+                finally { CloseHandle(token); }
+            }
+            finally { CloseHandle(proc); }
+        }
+
         private static bool IsTileable(IntPtr hwnd, bool allowMinimized, out string? rejected)
         {
             rejected = null;
@@ -274,6 +319,7 @@ namespace WndoLand
 
             GetWindowThreadProcessId(hwnd, out uint pid);
             if (pid == (uint)Environment.ProcessId) { rejected = "own window"; return false; }
+            if (IsElevatedProcessWeCannotMove(pid)) { rejected = "elevated process"; return false; }
 
             var title = new StringBuilder(256);
             GetWindowText(hwnd, title, title.Capacity);
@@ -284,14 +330,14 @@ namespace WndoLand
 
         private void RestoreSavedLayout(WorkspaceState saved)
         {
-            _workspace.BeginRestore(saved.Active);
+            _workspace.BeginRestore(saved);
 
             int restored = 0;
             foreach (var entry in saved.Windows)
             {
                 nint hwnd = (nint)entry.Hwnd;
                 if (!entry.StillValid() || !IsTileable(hwnd, allowMinimized: true, out _) || !_seen.Add(hwnd)) continue;
-                _workspace.RestoreWindow(entry.Workspace, hwnd);
+                _workspace.RestoreWindow(entry.Monitor, entry.Workspace, hwnd);
                 restored++;
             }
             foreach (var entry in saved.Floating)
@@ -324,7 +370,7 @@ namespace WndoLand
             {
                 if (!_seen.Add(hwnd)) continue;
                 Log.Debug($"Adopting existing window {Describe.Window(hwnd)}");
-                _workspace.AddToActiveWorkspace(hwnd);
+                _workspace.AddToActiveWorkspace(hwnd, byLocation: true);
             }
         }
 
@@ -333,6 +379,12 @@ namespace WndoLand
             if (idObject != OBJID_WINDOW || idChild != CHILDID_SELF || hwnd == IntPtr.Zero) return;
 
             using var busy = Watchdog.Enter($"window event 0x{evt:X} for hwnd=0x{hwnd:X}");
+
+            if (evt == EVENT_SYSTEM_FOREGROUND)
+            {
+                _workspace.NotifyForegroundChanged(hwnd);
+                return;
+            }
 
             if (evt == EVENT_OBJECT_DESTROY || evt == EVENT_OBJECT_HIDE)
             {
@@ -397,6 +449,23 @@ namespace WndoLand
             using var form = new SettingsForm(_updates);
             if (form.ShowDialog(this) == DialogResult.OK)
                 _workspace.ApplySettings();
+
+            if (form.RelaunchRequested)
+            {
+                Log.Info("Run level changed; relaunching through the startup task");
+                StartupRegistration.RelaunchViaTask();
+                _reallyExit = true;
+                Close();
+                return;
+            }
+
+            if (form.ExitRequested)
+            {
+                Log.Info("Exit requested from settings; restoring windows");
+                _workspace.ShowInactiveWindows();
+                _reallyExit = true;
+                Close();
+            }
         }
     }
 }

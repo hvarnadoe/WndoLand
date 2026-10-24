@@ -454,6 +454,110 @@
       "command": null,
       "target_workspace": 0,
       "direction": null
+    },
+    {
+      "name": "Focus Monitor Left",
+      "modifiers": [
+        "0x0003"
+      ],
+      "key": "0x25",
+      "target": 0,
+      "action": "0xB",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": "Left"
+    },
+    {
+      "name": "Focus Monitor Up",
+      "modifiers": [
+        "0x0003"
+      ],
+      "key": "0x26",
+      "target": 0,
+      "action": "0xB",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": "Up"
+    },
+    {
+      "name": "Focus Monitor Right",
+      "modifiers": [
+        "0x0003"
+      ],
+      "key": "0x27",
+      "target": 0,
+      "action": "0xB",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": "Right"
+    },
+    {
+      "name": "Focus Monitor Down",
+      "modifiers": [
+        "0x0003"
+      ],
+      "key": "0x28",
+      "target": 0,
+      "action": "0xB",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": "Down"
+    },
+    {
+      "name": "Send Window To Monitor Left",
+      "modifiers": [
+        "0x0007"
+      ],
+      "key": "0x25",
+      "target": 0,
+      "action": "0xC",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": "Left"
+    },
+    {
+      "name": "Send Window To Monitor Up",
+      "modifiers": [
+        "0x0007"
+      ],
+      "key": "0x26",
+      "target": 0,
+      "action": "0xC",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": "Up"
+    },
+    {
+      "name": "Send Window To Monitor Right",
+      "modifiers": [
+        "0x0007"
+      ],
+      "key": "0x27",
+      "target": 0,
+      "action": "0xC",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": "Right"
+    },
+    {
+      "name": "Send Window To Monitor Down",
+      "modifiers": [
+        "0x0007"
+      ],
+      "key": "0x28",
+      "target": 0,
+      "action": "0xC",
+      "process_path": null,
+      "command": null,
+      "target_workspace": 0,
+      "direction": "Down"
     }
   ]
 }

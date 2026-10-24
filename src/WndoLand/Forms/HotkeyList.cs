@@ -5,6 +5,7 @@ namespace WndoLand
         private const int BuiltIn = -1;
 
         private List<Keybinds> _user = new();
+        private List<Keybinds> _defaults = new();
 
         public bool Changed { get; private set; }
 
@@ -21,12 +22,14 @@ namespace WndoLand
             hotkeyGrid.Rows.Clear();
             try
             {
-                foreach (var kb in KeybindStore.LoadDefault())
-                    AddRow(kb, "Built-in", BuiltIn);
+                _defaults = KeybindStore.LoadEffectiveDefaults();
+                var overridden = KeybindStore.LoadOverrides().Select(o => o.Name).ToHashSet();
+                foreach (var kb in _defaults)
+                    AddRow(kb, overridden.Contains(kb.Name ?? "") ? "Built-in (changed)" : "Built-in", BuiltIn, kb.Name);
 
                 _user = KeybindStore.LoadUser();
                 for (int i = 0; i < _user.Count; i++)
-                    AddRow(_user[i], "Yours", i);
+                    AddRow(_user[i], "Yours", i, null);
             }
             catch (Exception ex)
             {
@@ -36,31 +39,55 @@ namespace WndoLand
             UpdateButtons();
         }
 
-        private void AddRow(Keybinds kb, string source, int userIndex)
+        private sealed record RowRef(int UserIndex, string? BuiltInName);
+
+        private void AddRow(Keybinds kb, string source, int userIndex, string? builtInName)
         {
             int row = hotkeyGrid.Rows.Add(kb.Name, kb.HotkeyText, kb.Summary, source);
-            hotkeyGrid.Rows[row].Tag = userIndex;
+            hotkeyGrid.Rows[row].Tag = new RowRef(userIndex, builtInName);
         }
 
-        private int SelectedUserIndex() =>
-            hotkeyGrid.SelectedRows.Count == 1 && hotkeyGrid.SelectedRows[0].Tag is int i ? i : BuiltIn;
+        private RowRef? Selected() =>
+            hotkeyGrid.SelectedRows.Count == 1 ? hotkeyGrid.SelectedRows[0].Tag as RowRef : null;
+
+        private int SelectedUserIndex() => Selected()?.UserIndex ?? BuiltIn;
+
+        private string? SelectedBuiltIn() => Selected()?.BuiltInName;
 
         private void UpdateButtons()
         {
-            bool editable = SelectedUserIndex() != BuiltIn;
-            editButton.Enabled = editable;
-            deleteButton.Enabled = editable;
+            var sel = Selected();
+            editButton.Enabled = sel != null;
+
+            // Built-in shortcuts can't be deleted, only put back to what shipped
+            bool builtIn = sel?.BuiltInName != null;
+            deleteButton.Text = builtIn ? "Reset" : "Delete";
+            deleteButton.Enabled = sel != null && (!builtIn || KeybindStore.IsOverridden(sel.BuiltInName!));
         }
 
         private void hotkeyGrid_SelectionChanged(object sender, EventArgs e) => UpdateButtons();
 
         private void hotkeyGrid_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.RowIndex >= 0 && SelectedUserIndex() != BuiltIn) editButton_Click(sender, e);
+            if (e.RowIndex >= 0 && Selected() != null) editButton_Click(sender, e);
         }
 
         private void editButton_Click(object sender, EventArgs e)
         {
+            if (SelectedBuiltIn() is { } builtInName)
+            {
+                var builtIn = _defaults.FirstOrDefault(d => d.Name == builtInName);
+                if (builtIn == null) return;
+
+                using var editor = new EditHotkeyForm(builtIn);
+                if (editor.ShowDialog(this) == DialogResult.OK)
+                {
+                    Changed = true;
+                    Reload();
+                }
+                return;
+            }
+
             int index = SelectedUserIndex();
             if (index == BuiltIn || index >= _user.Count) return;
 
@@ -75,6 +102,23 @@ namespace WndoLand
 
         private void deleteButton_Click(object sender, EventArgs e)
         {
+            if (SelectedBuiltIn() is { } builtInName)
+            {
+                try
+                {
+                    KeybindStore.ClearOverride(builtInName);
+                    Log.Info($"Reset built-in hotkey '{builtInName}' to its default");
+                    Changed = true;
+                    Reload();
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, $"Couldn't reset hotkey '{builtInName}'");
+                    listMsg.Text = $"Couldn't reset: {ex.Message}";
+                }
+                return;
+            }
+
             int index = SelectedUserIndex();
             if (index == BuiltIn || index >= _user.Count) return;
 

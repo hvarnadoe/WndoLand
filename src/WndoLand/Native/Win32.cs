@@ -42,6 +42,14 @@ namespace WndoLand
         [DllImport("dwmapi.dll")]
         public static extern int DwmGetWindowAttribute(nint hwnd, int attr, out int value, int size);
 
+        [DllImport("kernel32.dll", SetLastError = true)] public static extern nint OpenProcess(uint access, bool inherit, uint pid);
+        [DllImport("kernel32.dll")] public static extern bool CloseHandle(nint handle);
+        [DllImport("advapi32.dll", SetLastError = true)] public static extern bool OpenProcessToken(nint process, uint access, out nint token);
+        [DllImport("advapi32.dll", SetLastError = true)] public static extern bool GetTokenInformation(nint token, int infoClass, out int info, int length, out int returned);
+        public const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+        public const uint TOKEN_QUERY = 0x0008;
+        public const int TokenElevation = 20;
+
         [DllImport("user32.dll")] public static extern bool IsWindow(nint hwnd);
         [DllImport("user32.dll", SetLastError = true)] public static extern bool PostMessage(nint hwnd, uint msg, nint wParam, nint lParam);
         public const uint WM_CLOSE = 0x0010;
@@ -108,6 +116,8 @@ namespace WndoLand
             SW_FORCEMINIMIZE
         }
 
+        [DllImport("user32.dll")] public static extern short GetAsyncKeyState(int vk);
+        public const uint EVENT_SYSTEM_FOREGROUND = 0x0003;
         public const uint EVENT_OBJECT_DESTROY = 0x8001;
         public const uint EVENT_OBJECT_SHOW = 0x8002;
         public const uint EVENT_OBJECT_HIDE = 0x8003;

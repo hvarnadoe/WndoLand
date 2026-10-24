@@ -12,6 +12,30 @@ namespace WndoLand
         [JsonPropertyName("shortcuts")]
         public List<Keybinds> Shortcuts { get; init; } = new();
     }
+    /// <summary>A user's replacement hotkey for one built-in shortcut, matched to it by name.</summary>
+    internal class HotkeyOverride
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = "";
+
+        [JsonPropertyName("modifiers")]
+        public uint Modifiers { get; set; }
+
+        [JsonPropertyName("key")]
+        public Keys Key { get; set; }
+    }
+
+    internal class OverridesFile
+    {
+        [JsonPropertyName("overrides")]
+        public List<HotkeyOverride> Overrides { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Built-in shortcuts ship with the app and are replaced on every update, so edits to them are never written
+    /// there. They live in a separate overrides file in the user's data folder and are layered over the shipped
+    /// defaults at load time; an update can add or change shortcuts without losing the user's changes.
+    /// </summary>
     internal static class KeybindStore
     {
         private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
@@ -29,11 +53,59 @@ namespace WndoLand
 
         public static List<Keybinds> LoadDefault() => Read(AppPaths.DefaultKeybinds, optional: false);
 
+        public static List<HotkeyOverride> LoadOverrides()
+        {
+            try
+            {
+                if (!File.Exists(AppPaths.KeybindOverrides)) return new List<HotkeyOverride>();
+                return JsonSerializer.Deserialize<OverridesFile>(File.ReadAllText(AppPaths.KeybindOverrides))?.Overrides
+                       ?? new List<HotkeyOverride>();
+            }
+            catch (Exception ex)
+            {
+                // A damaged overrides file must not stop the app from starting; fall back to the defaults
+                Log.Warn(ex, $"Couldn't read {AppPaths.KeybindOverrides}; using the default hotkeys");
+                return new List<HotkeyOverride>();
+            }
+        }
+
+        private static void WriteOverrides(List<HotkeyOverride> overrides) =>
+            File.WriteAllText(AppPaths.KeybindOverrides, JsonSerializer.Serialize(new OverridesFile { Overrides = overrides }, JsonOptions));
+
+        /// <summary>The shipped shortcuts with the user's changed hotkeys applied.</summary>
+        public static List<Keybinds> LoadEffectiveDefaults()
+        {
+            var overrides = LoadOverrides();
+            return LoadDefault()
+                .Select(d => overrides.FirstOrDefault(o => o.Name == d.Name) is { } o ? d.WithHotkey(o.Modifiers, o.Key) : d)
+                .ToList();
+        }
+
+        public static bool IsOverridden(string name) => LoadOverrides().Any(o => o.Name == name);
+
+        public static void SetOverride(string name, uint modifiers, Keys key)
+        {
+            var overrides = LoadOverrides();
+            overrides.RemoveAll(o => o.Name == name);
+
+            var original = LoadDefault().FirstOrDefault(d => d.Name == name);
+            if (original == null || original.Modifiers != modifiers || original.Key != key)
+                overrides.Add(new HotkeyOverride { Name = name, Modifiers = modifiers, Key = key });
+
+            WriteOverrides(overrides);
+        }
+
+        public static void ClearOverride(string name)
+        {
+            var overrides = LoadOverrides();
+            if (overrides.RemoveAll(o => o.Name == name) > 0) WriteOverrides(overrides);
+        }
+
         public static List<Keybinds> LoadUser() => Read(AppPaths.UserKeybinds, optional: true);
 
         public static List<Keybinds> LoadAll()
         {
-            var all = LoadDefault();
+            var all = LoadEffectiveDefaults();
             all.AddRange(LoadUser());
             return all;
         }
@@ -134,8 +206,23 @@ namespace WndoLand
                 Actions.ToggleFloat => "Toggle floating",
                 Actions.ToggleFullscreen => "Toggle fullscreen",
                 Actions.MoveWindowToMonitor => "Move window to next monitor",
+                Actions.FocusMonitor => $"Focus monitor {Direction}",
+                Actions.SendWindowToMonitor => $"Send window to monitor {Direction}",
                 _ => Action.ToString()
             }
+        };
+
+        public Keybinds WithHotkey(uint modifiers, Keys key) => new()
+        {
+            Name = Name,
+            Modifiers = modifiers,
+            Key = key,
+            Target = Target,
+            Action = Action,
+            ProcessPath = ProcessPath,
+            Command = Command,
+            WorkspaceNum = WorkspaceNum,
+            Direction = Direction
         };
 
         public bool Register(int hkId, nint handle) => RegisterHotKey(handle, hkId, Modifiers, (uint)Key);
@@ -231,7 +318,21 @@ namespace WndoLand
                     workspace.MoveActiveWindowToNextMonitor();
                     return Task.CompletedTask;
                 },
+                Actions.FocusMonitor => MonitorAction(workspace, move: false),
+                Actions.SendWindowToMonitor => MonitorAction(workspace, move: true),
                 _ => throw new NotImplementedException($"Window action {Action} is not implemented")
+            };
+        }
+
+        private Func<Task> MonitorAction(Workspaces workspace, bool move)
+        {
+            var dir = Direction ?? throw new InvalidOperationException($"Keybind '{Name}' needs a \"direction\"");
+            return () =>
+            {
+                Log.Debug($"Window hotkey '{Name}' -> {(move ? "send window to" : "focus")} monitor {dir}");
+                if (move) workspace.MoveActiveWindowToMonitor(dir);
+                else workspace.FocusMonitor(dir);
+                return Task.CompletedTask;
             };
         }
 
@@ -294,6 +395,8 @@ namespace WndoLand
         ToggleFullscreen = 0x08,
         MoveWindowToMonitor = 0x09,
         ForceCloseWindow = 0x0A,
+        FocusMonitor = 0x0B,
+        SendWindowToMonitor = 0x0C,
         LaunchProcess = 0x10,
         RunCmdHidden = 0x20,
         RunCmdInWindow = 0x21,

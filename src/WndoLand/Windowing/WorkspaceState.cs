@@ -11,12 +11,15 @@ namespace WndoLand
         public string Class { get; set; } = "";
         public int Workspace { get; set; }
 
-        public static WindowEntry From(nint hwnd, int workspace)
+        // Device name of the monitor whose workspace holds the window; absent in layouts saved before per-monitor workspaces
+        public string? Monitor { get; set; }
+
+        public static WindowEntry From(nint hwnd, int workspace, string? monitor = null)
         {
             GetWindowThreadProcessId(hwnd, out uint pid);
             var cls = new StringBuilder(256);
             GetClassName(hwnd, cls, cls.Capacity);
-            return new WindowEntry { Hwnd = hwnd, Pid = pid, Class = cls.ToString(), Workspace = workspace };
+            return new WindowEntry { Hwnd = hwnd, Pid = pid, Class = cls.ToString(), Workspace = workspace, Monitor = monitor };
         }
 
         public bool StillValid()
@@ -33,6 +36,8 @@ namespace WndoLand
     internal class WorkspaceState
     {
         public int Active { get; set; } = 1;
+        public string? ActiveMonitor { get; set; }
+        public Dictionary<string, int> ActiveWorkspaces { get; set; } = new();
         public List<WindowEntry> Windows { get; set; } = new();
         public List<WindowEntry> Floating { get; set; } = new();
     }

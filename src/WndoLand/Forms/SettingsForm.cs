@@ -7,6 +7,11 @@ namespace WndoLand
         private readonly UpdateService _updates;
         private Color _color;
 
+        public bool ExitRequested { get; private set; }
+
+        /// <summary>The saved run-as-administrator choice differs from how this instance is running.</summary>
+        public bool RelaunchRequested { get; private set; }
+
         internal SettingsForm(UpdateService updates)
         {
             _updates = updates;
@@ -25,6 +30,13 @@ namespace WndoLand
             gapSize.Value = Math.Clamp(s.Gap, (int)gapSize.Minimum, (int)gapSize.Maximum);
             stripTitleBars.Checked = s.StripTitleBars;
             startWithWindows.Checked = StartupRegistration.IsEnabled;
+            runElevated.Checked = StartupRegistration.IsElevated;
+            runElevated.Enabled = startWithWindows.Checked;
+            startWithWindows.CheckedChanged += (_, _) =>
+            {
+                runElevated.Enabled = startWithWindows.Checked;
+                if (!startWithWindows.Checked) runElevated.Checked = false;
+            };
             autoUpdate.Checked = s.AutoUpdate;
         }
 
@@ -73,10 +85,27 @@ namespace WndoLand
             }
         }
 
+        private void exitButton_Click(object sender, EventArgs e)
+        {
+            ExitRequested = true;
+            DialogResult = DialogResult.Cancel;
+            Close();
+        }
+
         private void saveButton_Click(object sender, EventArgs e)
         {
             try
             {
+                bool startupChanged = startWithWindows.Checked != StartupRegistration.IsEnabled
+                    || runElevated.Checked != StartupRegistration.IsElevated;
+                if (startupChanged && !StartupRegistration.Set(startWithWindows.Checked, runElevated.Checked))
+                {
+                    settingsMsg.Text = "Couldn't update the startup task (administrator approval is needed).";
+                    return;
+                }
+                RelaunchRequested = startupChanged && startWithWindows.Checked &&runElevated.Checked != StartupRegistration.SelfElevated
+                    && StartupRegistration.IsElevated == runElevated.Checked;
+
                 new Settings
                 {
                     BorderColor = $"#{_color.R:X2}{_color.G:X2}{_color.B:X2}",
@@ -85,9 +114,6 @@ namespace WndoLand
                     StripTitleBars = stripTitleBars.Checked,
                     AutoUpdate = autoUpdate.Checked
                 }.Save();
-
-                if (startWithWindows.Checked != StartupRegistration.IsEnabled)
-                    StartupRegistration.Set(startWithWindows.Checked);
             }
             catch (Exception ex)
             {

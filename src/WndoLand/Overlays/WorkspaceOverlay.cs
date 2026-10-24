@@ -40,11 +40,10 @@ namespace WndoLand
             }
         }
 
-        public void Flash(int workspaceNum)
+        public void Flash(int workspaceNum, Rectangle area)
         {
             _number = workspaceNum;
 
-            var area = Screen.FromPoint(Cursor.Position).Bounds;
             Location = new Point(area.Right - Size_ - Margin_, area.Top + Margin_);
 
             Invalidate();

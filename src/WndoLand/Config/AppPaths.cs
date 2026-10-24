@@ -7,6 +7,7 @@ namespace WndoLand
 
         public static string DefaultKeybinds => Path.Combine(AppContext.BaseDirectory, "keybinds.json");
         public static string UserKeybinds => Path.Combine(DataDir, "user_keybinds.json");
+        public static string KeybindOverrides => Path.Combine(DataDir, "keybind_overrides.json");
         public static string SettingsFile => Path.Combine(DataDir, "settings.json");
         public static string RulesFile => Path.Combine(DataDir, "rules.json");
         public static string StateFile => Path.Combine(DataDir, "state.json");

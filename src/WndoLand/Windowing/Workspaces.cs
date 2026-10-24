@@ -4,48 +4,171 @@ using static WndoLand.Win32;
 
 namespace WndoLand
 {
-    internal class Workspaces()
+    /// <summary>
+    /// Every monitor owns its own set of workspaces and its own active workspace; switching workspaces only
+    /// affects the active monitor, and windows tile within the monitor their workspace belongs to.
+    /// </summary>
+    internal class Workspaces
     {
-        Workspace[] workSpaces =
+        private const int WorkspaceCount = 10;
+
+        // A focus change this soon after one of our own actions is a side-effect of hiding/showing windows, not the user
+        private const long OwnActionQuietMs = 800;
+
+        private sealed class MonitorSpace
         {
-            new Workspace(),
-            new Workspace(),
-            new Workspace(),
-            new Workspace(),
-            new Workspace(),
-            new Workspace(),
-            new Workspace(),
-            new Workspace(),
-            new Workspace(),
-            new Workspace()
-        };
-        int activeWorkSpace = 1;
+            public MonitorSpace(string id)
+            {
+                Id = id;
+                Spaces = Enumerable.Range(0, WorkspaceCount).Select(_ => new Workspace(() => Bounds)).ToArray();
+            }
+
+            public string Id { get; }
+            public Workspace[] Spaces { get; }
+            public int ActiveNum { get; set; } = 1;
+            public Workspace Active => Spaces[ActiveNum - 1];
+
+            // Falls back to the primary screen if this monitor has been unplugged
+            public Rectangle Bounds => (Screen.AllScreens.FirstOrDefault(s => s.DeviceName == Id) ?? Screen.PrimaryScreen!).Bounds;
+        }
+
+        private readonly List<MonitorSpace> _monitors = new();
+        private MonitorSpace _activeMonitor;
+        private Action<nint>? _pruned;
+        private long _ownActionAt;
 
         private readonly HashSet<nint> _floating = new();
 
-        private Workspace Active => workSpaces[activeWorkSpace - 1];
-
-        public void SetActiveWorkspace(int workspaceNum)
+        public Workspaces()
         {
-            Log.Info($"Switching workspace {activeWorkSpace} -> {workspaceNum}");
-            var old = workSpaces[activeWorkSpace - 1];
-            workSpaces[workspaceNum - 1].Activate();
-            if (old != workSpaces[workspaceNum - 1]) old.Deactivate();
-            activeWorkSpace = workspaceNum;
-            WorkspaceChanged?.Invoke(workspaceNum);
+            SyncMonitors();
+            _activeMonitor = Primary;
+        }
+
+        private MonitorSpace Primary => _monitors.FirstOrDefault(m => m.Id == Screen.PrimaryScreen?.DeviceName) ?? _monitors[0];
+
+        private Workspace Active => _activeMonitor.Active;
+
+        private int activeWorkSpace => _activeMonitor.ActiveNum;
+
+        private IEnumerable<Workspace> AllWorkspaces => _monitors.SelectMany(m => m.Spaces);
+
+        private (MonitorSpace Monitor, Workspace Workspace)? Locate(nint hwnd)
+        {
+            foreach (var m in _monitors)
+                foreach (var ws in m.Spaces)
+                    if (ws.Contains(hwnd)) return (m, ws);
+            return null;
+        }
+
+        private MonitorSpace MonitorUnder(nint hwnd)
+        {
+            var screen = Screen.FromHandle(hwnd);
+            return _monitors.FirstOrDefault(m => m.Id == screen.DeviceName) ?? _activeMonitor;
+        }
+
+        private void NoteOwnAction() => _ownActionAt = Environment.TickCount64;
+
+        /// <summary>Adds monitors that appeared and moves the windows of ones that disappeared onto the primary monitor.</summary>
+        private void SyncMonitors()
+        {
+            var screens = Screen.AllScreens.OrderBy(s => s.Bounds.Left).ThenBy(s => s.Bounds.Top).ToList();
+
+            foreach (var s in screens)
+            {
+                if (_monitors.Any(m => m.Id == s.DeviceName)) continue;
+                Log.Info($"Monitor {s.DeviceName} {s.Bounds} gets its own workspaces");
+                var space = new MonitorSpace(s.DeviceName);
+                foreach (var ws in space.Spaces) ws.Pruned = _pruned;
+                _monitors.Add(space);
+            }
+
+            foreach (var gone in _monitors.Where(m => screens.All(s => s.DeviceName != m.Id)).ToList())
+            {
+                Log.Warn($"Monitor {gone.Id} is gone; moving its windows to the primary monitor");
+                _monitors.Remove(gone);
+                var primary = Primary;
+                for (int i = 0; i < WorkspaceCount; i++)
+                    foreach (var hwnd in gone.Spaces[i].Hwnds)
+                    {
+                        if (primary.Spaces[i] == primary.Active) primary.Spaces[i].AddWithoutTiling(hwnd);
+                        else primary.Spaces[i].AddHidden(hwnd);
+                    }
+                if (_activeMonitor == gone) _activeMonitor = primary;
+            }
+
+            // Left to right, so "next monitor" and the saved layout agree with the physical arrangement
+            _monitors.Sort((a, b) =>
+                screens.FindIndex(s => s.DeviceName == a.Id).CompareTo(screens.FindIndex(s => s.DeviceName == b.Id)));
+        }
+
+        public void OnDisplaySettingsChanged()
+        {
+            SyncMonitors();
+            if (!_monitors.Contains(_activeMonitor)) _activeMonitor = Primary;
+            foreach (var m in _monitors) m.Active.Tile();
             Changed?.Invoke();
         }
 
-        public event Action<int>? WorkspaceChanged;
+        /// <summary>Follows the user's focus onto another monitor (clicking into a window there makes that monitor active).</summary>
+        public void NotifyForegroundChanged(nint hwnd)
+        {
+            if (Environment.TickCount64 - _ownActionAt < OwnActionQuietMs) return;
+
+            nint target = IsKnown(hwnd) ? hwnd : GetAncestor(hwnd, GA_ROOTOWNER);
+            var found = Locate(target);
+            if (found == null)
+            {
+                if (!_floating.Contains(target)) return;
+                var onScreen = MonitorUnder(target);
+                if (onScreen != _activeMonitor)
+                {
+                    Log.Debug($"Focus moved to a floating window on {onScreen.Id}; it is now the active monitor");
+                    _activeMonitor = onScreen;
+                }
+                return;
+            }
+
+            var (monitor, workspace) = found.Value;
+            // Only the visible workspace of a monitor can hold the focused window
+            if (workspace != monitor.Active) return;
+
+            workspace.LastFocus = target;
+            if (monitor != _activeMonitor)
+            {
+                Log.Debug($"Focus moved to {monitor.Id}; it is now the active monitor");
+                _activeMonitor = monitor;
+            }
+        }
+
+        public void SetActiveWorkspace(int workspaceNum)
+        {
+            NoteOwnAction();
+            var monitor = _activeMonitor;
+            Log.Info($"Switching workspace {monitor.ActiveNum} -> {workspaceNum} on {monitor.Id}");
+            var old = monitor.Active;
+            var next = monitor.Spaces[workspaceNum - 1];
+            next.Activate();
+            if (old != next) old.Deactivate();
+            monitor.ActiveNum = workspaceNum;
+            WorkspaceChanged?.Invoke(workspaceNum, monitor.Bounds);
+            Changed?.Invoke();
+        }
+
+        public event Action<int, Rectangle>? WorkspaceChanged;
 
         public event Action? Changed;
 
         public Action<nint>? WindowPruned
         {
-            set { foreach (var ws in workSpaces) ws.Pruned = value; }
+            set
+            {
+                _pruned = value;
+                foreach (var ws in AllWorkspaces) ws.Pruned = value;
+            }
         }
 
-        private bool IsKnown(nint hwnd) => _floating.Contains(hwnd) || workSpaces.Any(w => w.Contains(hwnd));
+        private bool IsKnown(nint hwnd) => _floating.Contains(hwnd) || AllWorkspaces.Any(w => w.Contains(hwnd));
 
         private nint ForegroundTarget()
         {
@@ -53,28 +176,34 @@ namespace WndoLand
             return IsKnown(fg) ? fg : GetAncestor(fg, GA_ROOTOWNER);
         }
 
+        // The workspace the window is tiled on, falling back to the active one
+        private Workspace WorkspaceFor(nint hwnd) => Locate(hwnd)?.Workspace ?? Active;
+
         public void MoveActiveWindowToWorkspace(int workspaceNum)
         {
             nint hwnd = GetForegroundWindow();
             nint owner = GetAncestor(hwnd, GA_ROOTOWNER);
-            nint target = workSpaces.Any(w => w.Contains(hwnd)) ? hwnd : owner;
+            nint target = AllWorkspaces.Any(w => w.Contains(hwnd)) ? hwnd : owner;
 
-            int from = Array.FindIndex(workSpaces, w => w.Contains(target));
-            if (from < 0)
+            var found = Locate(target);
+            if (found == null)
             {
                 Log.Warn($"Can't send foreground window to workspace {workspaceNum}: not tracked ({Describe.Window(hwnd)})");
                 return;
             }
-            if (from == workspaceNum - 1)
+
+            var (monitor, source) = found.Value;
+            if (monitor.Spaces[workspaceNum - 1] == source)
             {
                 Log.Debug($"hwnd=0x{target:X} is already on workspace {workspaceNum}");
                 return;
             }
 
-            Log.Info($"Moving hwnd=0x{target:X} from workspace {from + 1} to {workspaceNum}: {Describe.Window(target)}");
+            Log.Info($"Moving hwnd=0x{target:X} to workspace {workspaceNum} on {monitor.Id}: {Describe.Window(target)}");
             // Remove from the source first so Deactivate doesn't minimize it; SetActiveWorkspace then shows and tiles it
-            workSpaces[from].Remove(target, retile: false);
-            workSpaces[workspaceNum - 1].AddWithoutTiling(target);
+            source.Remove(target, retile: false);
+            monitor.Spaces[workspaceNum - 1].AddWithoutTiling(target);
+            _activeMonitor = monitor;
             SetActiveWorkspace(workspaceNum);
         }
 
@@ -139,8 +268,8 @@ namespace WndoLand
         public void FocusInDirection(Direction dir)
         {
             nint fg = GetForegroundWindow();
-            var ws = Active;
-            nint current = ws.Contains(fg) ? fg : GetAncestor(fg, GA_ROOTOWNER);
+            nint current = AllWorkspaces.Any(w => w.Contains(fg)) ? fg : GetAncestor(fg, GA_ROOTOWNER);
+            var ws = WorkspaceFor(current);
 
             var next = ws.FindNeighbour(current, dir);
             if (next == null)
@@ -158,8 +287,8 @@ namespace WndoLand
         public void SwapInDirection(Direction dir)
         {
             nint fg = GetForegroundWindow();
-            var ws = Active;
-            nint current = ws.Contains(fg) ? fg : GetAncestor(fg, GA_ROOTOWNER);
+            nint current = AllWorkspaces.Any(w => w.Contains(fg)) ? fg : GetAncestor(fg, GA_ROOTOWNER);
+            var ws = WorkspaceFor(current);
 
             if (ws.SwapWithNeighbour(current, dir))
             {
@@ -177,69 +306,184 @@ namespace WndoLand
             if (_floating.Remove(target))
             {
                 Log.Info($"Tiling floating window again: {Describe.Window(target)}");
-                Active.Add(target);
+                MonitorUnder(target).Active.Add(target);
                 Changed?.Invoke();
                 return;
             }
 
-            if (!Active.Contains(target))
+            var found = Locate(target);
+            if (found == null)
             {
-                Log.Warn($"Can't float foreground window: not tracked on workspace {activeWorkSpace} ({Describe.Window(target)})");
+                Log.Warn($"Can't float foreground window: not tracked ({Describe.Window(target)})");
                 return;
             }
 
             Log.Info($"Floating window: {Describe.Window(target)}");
-            Active.Remove(target, retile: true);
+            found.Value.Workspace.Remove(target, retile: true);
             _floating.Add(target);
             Borders.Restore(target);
-            CentreFloating(target);
+            CentreFloating(target, found.Value.Monitor.Bounds);
             Changed?.Invoke();
         }
 
-        private static void CentreFloating(nint hwnd)
+        private static void CentreFloating(nint hwnd, Rectangle monitor)
         {
             if (IsZoomed(hwnd)) ShowWindow(hwnd, NCMDSHOW.SW_RESTORE);
-            var mi = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
-            if (!GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), ref mi)) return;
 
-            int w = (mi.rcMonitor.right - mi.rcMonitor.left) * 7 / 10;
-            int h = (mi.rcMonitor.bottom - mi.rcMonitor.top) * 7 / 10;
-            int x = mi.rcMonitor.left + ((mi.rcMonitor.right - mi.rcMonitor.left) - w) / 2;
-            int y = mi.rcMonitor.top + ((mi.rcMonitor.bottom - mi.rcMonitor.top) - h) / 2;
+            int w = monitor.Width * 7 / 10;
+            int h = monitor.Height * 7 / 10;
+            int x = monitor.Left + (monitor.Width - w) / 2;
+            int y = monitor.Top + (monitor.Height - h) / 2;
             MoveWindow(hwnd, x, y, w, h, true);
         }
 
         public void ToggleFullscreen()
         {
             nint target = ForegroundTarget();
-            if (!Active.Contains(target))
+            var found = Locate(target);
+            if (found == null)
             {
-                Log.Warn($"Can't fullscreen foreground window: not tiled on workspace {activeWorkSpace} ({Describe.Window(target)})");
+                Log.Warn($"Can't fullscreen foreground window: not tiled ({Describe.Window(target)})");
                 return;
             }
             Log.Info($"Toggle fullscreen: hwnd=0x{target:X}");
-            Active.ToggleFullscreen(target);
+            found.Value.Workspace.ToggleFullscreen(target);
         }
 
-        public void MoveActiveWindowToNextMonitor()
+        private static Point Centre(Rectangle r) => new(r.Left + r.Width / 2, r.Top + r.Height / 2);
+
+        /// <summary>The monitor lying in the given direction, preferring the one most squarely in line with the current monitor.</summary>
+        private MonitorSpace? NeighbourMonitor(MonitorSpace from, Direction dir)
         {
-            nint target = ForegroundTarget();
-            if (!Active.Contains(target))
+            var c = Centre(from.Bounds);
+            bool horizontal = dir is Direction.Left or Direction.Right;
+            MonitorSpace? best = null;
+            long bestScore = long.MaxValue;
+
+            foreach (var m in _monitors)
             {
-                Log.Warn($"Can't move foreground window to another monitor: not tiled on workspace {activeWorkSpace} ({Describe.Window(target)})");
+                if (m == from) continue;
+                var o = Centre(m.Bounds);
+                int dx = o.X - c.X, dy = o.Y - c.Y;
+
+                bool ahead = dir switch
+                {
+                    Direction.Right => dx > 0,
+                    Direction.Left => dx < 0,
+                    Direction.Down => dy > 0,
+                    _ => dy < 0
+                };
+                if (!ahead) continue;
+
+                long score = horizontal ? Math.Abs(dx) + 2L * Math.Abs(dy) : Math.Abs(dy) + 2L * Math.Abs(dx);
+                if (score < bestScore) { best = m; bestScore = score; }
+            }
+            return best;
+        }
+
+        /// <summary>Makes the monitor in the given direction active and focuses a window on it.</summary>
+        public void FocusMonitor(Direction dir)
+        {
+            var dest = NeighbourMonitor(_activeMonitor, dir);
+            if (dest == null)
+            {
+                Log.Debug($"Focus monitor {dir}: no monitor {dir} of {_activeMonitor.Id}");
                 return;
             }
-            Active.MoveToNextMonitor(target);
+
+            NoteOwnAction();
+            Log.Info($"Focus monitor {dir}: {_activeMonitor.Id} -> {dest.Id}");
+            _activeMonitor = dest;
+
+            var ws = dest.Active;
+            nint focus = ws.Contains(ws.LastFocus) ? ws.LastFocus : ws.Hwnds.FirstOrDefault();
+            if (focus != 0)
+            {
+                if (IsIconic(focus)) ShowWindow(focus, NCMDSHOW.SW_RESTORE);
+                if (!SetForegroundWindow(focus))
+                    Log.Warn($"SetForegroundWindow refused for hwnd=0x{focus:X} (foreground is now 0x{GetForegroundWindow():X})");
+            }
+            else
+            {
+                // Nothing to focus; park the cursor there so it's clear where new windows will open
+                Cursor.Position = Centre(dest.Bounds);
+            }
+
+            WorkspaceChanged?.Invoke(dest.ActiveNum, dest.Bounds);
+            Changed?.Invoke();
+        }
+
+        /// <summary>Sends the foreground window to whatever workspace is currently active on the monitor in the given direction.</summary>
+        public void MoveActiveWindowToMonitor(Direction dir)
+        {
+            nint target = ForegroundTarget();
+            var current = Locate(target)?.Monitor ?? MonitorUnder(target);
+            var dest = NeighbourMonitor(current, dir);
+            if (dest == null)
+            {
+                Log.Debug($"Move window {dir}: no monitor {dir} of {current.Id}");
+                return;
+            }
+            MoveWindowToMonitor(target, dest);
+        }
+
+        /// <summary>Cycles the foreground window to the next monitor, left to right.</summary>
+        public void MoveActiveWindowToNextMonitor()
+        {
+            if (_monitors.Count < 2)
+            {
+                Log.Debug("MoveToNextMonitor: only one monitor");
+                return;
+            }
+
+            nint target = ForegroundTarget();
+            var current = Locate(target)?.Monitor ?? MonitorUnder(target);
+            MoveWindowToMonitor(target, _monitors[(_monitors.IndexOf(current) + 1) % _monitors.Count]);
+        }
+
+        private void MoveWindowToMonitor(nint target, MonitorSpace dest)
+        {
+            NoteOwnAction();
+            var found = Locate(target);
+            if (found == null)
+            {
+                if (!_floating.Contains(target))
+                {
+                    Log.Warn($"Can't move foreground window to another monitor: not tracked ({Describe.Window(target)})");
+                    return;
+                }
+                Log.Info($"Moving floating hwnd=0x{target:X} to {dest.Id}");
+                CentreFloating(target, dest.Bounds);
+                _activeMonitor = dest;
+                Changed?.Invoke();
+                return;
+            }
+
+            if (found.Value.Monitor == dest) return;
+
+            Log.Info($"Moving hwnd=0x{target:X} from {found.Value.Monitor.Id} to workspace {dest.ActiveNum} on {dest.Id}: {Describe.Window(target)}");
+            found.Value.Workspace.Remove(target, retile: true);
+            dest.Active.Add(target);
+            dest.Active.LastFocus = target;
+            _activeMonitor = dest;
+            SetForegroundWindow(target);
+
+            WorkspaceChanged?.Invoke(dest.ActiveNum, dest.Bounds);
+            Changed?.Invoke();
         }
 
         public void AddToWorkspace(int workspaceNum, nint hwnd)
         {
-            Log.Debug($"Add hwnd=0x{hwnd:X} to workspace {workspaceNum}");
-            workSpaces[workspaceNum - 1].Add(hwnd);
+            Log.Debug($"Add hwnd=0x{hwnd:X} to workspace {workspaceNum} on {_activeMonitor.Id}");
+            _activeMonitor.Spaces[workspaceNum - 1].Add(hwnd);
             Changed?.Invoke();
         }
 
-        public void AddToActiveWorkspace(nint hwnd)
+        /// <summary>
+        /// New windows join the active monitor (so launching onto an empty monitor works); windows that were already
+        /// open at startup stay on the monitor they are physically on.
+        /// </summary>
+        public void AddToActiveWorkspace(nint hwnd, bool byLocation = false)
         {
             var rule = Rules.Match(hwnd);
 
@@ -251,22 +495,24 @@ namespace WndoLand
                 return;
             }
 
-            int target = rule?.Action == "workspace" && rule.Workspace is >= 1 and <= 10 ? rule.Workspace : activeWorkSpace;
-            Log.Debug($"Add hwnd=0x{hwnd:X} to workspace {target} (active={activeWorkSpace})");
-            if (target == activeWorkSpace)
-                workSpaces[target - 1].Add(hwnd);
+            var monitor = byLocation ? MonitorUnder(hwnd) : _activeMonitor;
+            int target = rule?.Action == "workspace" && rule.Workspace is >= 1 and <= WorkspaceCount ? rule.Workspace : monitor.ActiveNum;
+            Log.Debug($"Add hwnd=0x{hwnd:X} to workspace {target} on {monitor.Id} (active={monitor.ActiveNum})");
+            if (target == monitor.ActiveNum)
+                monitor.Spaces[target - 1].Add(hwnd);
             else
-                workSpaces[target - 1].AddHidden(hwnd);
+                monitor.Spaces[target - 1].AddHidden(hwnd);
             Changed?.Invoke();
         }
 
         public void Remove(nint hwnd)
         {
-            Log.Debug($"Remove hwnd=0x{hwnd:X} from all workspaces (active={activeWorkSpace})");
+            Log.Debug($"Remove hwnd=0x{hwnd:X} from all workspaces");
             _floating.Remove(hwnd);
             Borders.Restore(hwnd);
-            for (int i = 0; i < workSpaces.Length; i++)
-                workSpaces[i].Remove(hwnd, retile: i == activeWorkSpace - 1);
+            foreach (var m in _monitors)
+                foreach (var ws in m.Spaces)
+                    ws.Remove(hwnd, retile: ws == m.Active);
             Changed?.Invoke();
         }
 
@@ -278,48 +524,88 @@ namespace WndoLand
         public void ApplySettings()
         {
             if (Settings.Current.StripTitleBars)
-                foreach (var ws in workSpaces)
+                foreach (var ws in AllWorkspaces)
                     foreach (var hwnd in ws.Hwnds)
                         Borders.Strip(hwnd);
             else
                 Borders.RestoreAll();
 
-            Active.Tile();
+            foreach (var m in _monitors) m.Active.Tile();
+        }
+
+        // Windows on other workspaces are parked minimized; bring them back so nothing is left stranded on exit
+        public void ShowInactiveWindows()
+        {
+            foreach (var m in _monitors)
+                foreach (var ws in m.Spaces)
+                    if (ws != m.Active) ws.Activate(show: true);
         }
 
         public WorkspaceState Snapshot()
         {
-            var state = new WorkspaceState { Active = activeWorkSpace };
-            for (int i = 0; i < workSpaces.Length; i++)
-                foreach (var hwnd in workSpaces[i].Hwnds)
-                    state.Windows.Add(WindowEntry.From(hwnd, i + 1));
+            var state = new WorkspaceState { Active = Primary.ActiveNum, ActiveMonitor = _activeMonitor.Id };
+            foreach (var m in _monitors)
+            {
+                state.ActiveWorkspaces[m.Id] = m.ActiveNum;
+                for (int i = 0; i < m.Spaces.Length; i++)
+                    foreach (var hwnd in m.Spaces[i].Hwnds)
+                        state.Windows.Add(WindowEntry.From(hwnd, i + 1, m.Id));
+            }
             foreach (var hwnd in _floating)
                 state.Floating.Add(WindowEntry.From(hwnd, 0));
             return state;
         }
 
-        public void BeginRestore(int active) => activeWorkSpace = Math.Clamp(active, 1, workSpaces.Length);
-
-        public void RestoreWindow(int workspaceNum, nint hwnd)
+        public void BeginRestore(WorkspaceState saved)
         {
-            var ws = workSpaces[Math.Clamp(workspaceNum, 1, workSpaces.Length) - 1];
-            if (ws == Active) ws.AddWithoutTiling(hwnd);
+            foreach (var m in _monitors)
+            {
+                int num = saved.ActiveWorkspaces.TryGetValue(m.Id, out int n) ? n
+                        : m == Primary ? saved.Active
+                        : 1;
+                m.ActiveNum = Math.Clamp(num, 1, WorkspaceCount);
+            }
+            _activeMonitor = _monitors.FirstOrDefault(m => m.Id == saved.ActiveMonitor) ?? Primary;
+        }
+
+        public void RestoreWindow(string? monitorId, int workspaceNum, nint hwnd)
+        {
+            // Layouts saved before monitors had their own workspaces carry no monitor; they all lived on the primary one
+            var monitor = _monitors.FirstOrDefault(m => m.Id == monitorId) ?? Primary;
+            var ws = monitor.Spaces[Math.Clamp(workspaceNum, 1, WorkspaceCount) - 1];
+            if (ws == monitor.Active) ws.AddWithoutTiling(hwnd);
             else ws.AddHidden(hwnd);
         }
 
         public void RestoreFloating(nint hwnd) => _floating.Add(hwnd);
 
-        public void EndRestore() => Active.Tile();
+        public void EndRestore()
+        {
+            foreach (var m in _monitors) m.Active.Tile();
+        }
 
-        private class Workspace()
+        private class Workspace(Func<Rectangle> area)
         {
             private List<Window> windows = new List<Window>();
 
             public Action<nint>? Pruned { get; set; }
 
+            // The window that last had focus here, so returning to this monitor lands back on it
+            public nint LastFocus { get; set; }
+
             private nint _fullscreen;
 
             public IEnumerable<nint> Hwnds => windows.Select(w => w.Hwnd).ToList();
+
+            public void Activate(bool show)
+            {
+                if (show)
+                {
+                    RunOnAll("show", w => w.Show());
+                    return;
+                }
+                Activate();
+            }
 
             public void Activate()
             {
@@ -422,7 +708,6 @@ namespace WndoLand
                 int a = windows.FindIndex(w => w.Hwnd == from);
                 int b = windows.FindIndex(w => w.Hwnd == next.Value);
                 (windows[a], windows[b]) = (windows[b], windows[a]);
-                (windows[a].Monitor, windows[b].Monitor) = (windows[b].Monitor, windows[a].Monitor);
                 Tile();
                 return true;
             }
@@ -432,34 +717,6 @@ namespace WndoLand
                 _fullscreen = _fullscreen == hwnd ? 0 : hwnd;
                 Tile();
                 if (_fullscreen != 0) SetForegroundWindow(hwnd);
-            }
-
-            public void MoveToNextMonitor(nint hwnd)
-            {
-                var monitors = GetMonitorsLeftToRight();
-                if (monitors.Count < 2)
-                {
-                    Log.Debug("MoveToNextMonitor: only one monitor");
-                    return;
-                }
-
-                var w = windows.First(x => x.Hwnd == hwnd);
-                int idx = monitors.IndexOf(ResolveMonitor(w));
-                w.Monitor = monitors[(idx + 1) % monitors.Count];
-                Log.Info($"Moving hwnd=0x{hwnd:X} to monitor 0x{w.Monitor:X}");
-                Tile();
-            }
-
-            private static List<nint> GetMonitorsLeftToRight()
-            {
-                var found = new List<(nint handle, int left)>();
-                EnumDisplayMonitors(0, 0, (handle, _, _, _) =>
-                {
-                    var mi = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
-                    if (GetMonitorInfo(handle, ref mi)) found.Add((handle, mi.rcMonitor.left));
-                    return true;
-                }, 0);
-                return found.OrderBy(m => m.left).Select(m => m.handle).ToList();
             }
 
             public bool Contains(nint hwnd) => windows.Any(w => w.Hwnd == hwnd);
@@ -533,39 +790,31 @@ namespace WndoLand
                 }
 
                 int gap = Math.Max(0, Settings.Current.Gap);
-                Log.Debug($"Tile: {windows.Count} window(s) ({before - windows.Count} pruned), gap {gap}");
+                var bounds = area();
+                Log.Debug($"Tile: {windows.Count} window(s) ({before - windows.Count} pruned), gap {gap}, monitor {Describe.Rect(bounds.Left, bounds.Top, bounds.Right, bounds.Bottom)}");
 
-                foreach (var group in windows.GroupBy(w => ResolveMonitor(w)).ToList())
+                int totalW = bounds.Width;
+                int totalH = bounds.Height;
+                var layout = ComputeLayout(windows.Count);
+
+                for (int i = 0; i < layout.Count; i++)
                 {
-                    if (!TryGetMonitorRect(group.Key, out var area))
-                    {
-                        Log.Error($"GetMonitorInfo failed for hMonitor=0x{group.Key:X}, Win32 error {Marshal.GetLastWin32Error()}; skipping its windows");
-                        continue;
-                    }
+                    var c = layout[i];
+                    // Round edges rather than sizes so neighbouring cells never leave a gap
+                    int left = bounds.Left + (int)Math.Round(c.X * totalW);
+                    int top = bounds.Top + (int)Math.Round(c.Y * totalH);
+                    int right = bounds.Left + (int)Math.Round((c.X + c.W) * totalW);
+                    int bottom = bounds.Top + (int)Math.Round((c.Y + c.H) * totalH);
+                    windows[i].Bounds = Rectangle.FromLTRB(left, top, right, bottom);
 
-                    int totalW = area.right - area.left;
-                    int totalH = area.bottom - area.top;
-                    var members = group.ToList();
-                    var layout = ComputeLayout(members.Count);
-                    Log.Debug($"  monitor 0x{group.Key:X} {Describe.Rect(area)}: {members.Count} window(s)");
-
-                    for (int i = 0; i < layout.Count; i++)
-                    {
-                        var c = layout[i];
-                        // Round edges rather than sizes so neighbouring cells never leave a gap
-                        int left = area.left + (int)Math.Round(c.X * totalW);
-                        int top = area.top + (int)Math.Round(c.Y * totalH);
-                        int right = area.left + (int)Math.Round((c.X + c.W) * totalW);
-                        int bottom = area.top + (int)Math.Round((c.Y + c.H) * totalH);
-                        members[i].Bounds = Rectangle.FromLTRB(left, top, right, bottom);
-
-                        var place = members[i].Hwnd == _fullscreen
-                            ? Rectangle.FromLTRB(area.left, area.top, area.right, area.bottom)
-                            : Rectangle.FromLTRB(left + gap / 2, top + gap / 2, right - gap / 2, bottom - gap / 2);
-                        Place(members[i].Hwnd, place, i);
-                    }
+                    var place = windows[i].Hwnd == _fullscreen
+                        ? bounds
+                        : Rectangle.FromLTRB(left + gap / 2, top + gap / 2, right - gap / 2, bottom - gap / 2);
+                    Place(windows[i].Hwnd, place, i);
                 }
             }
+
+            private static readonly System.Collections.Concurrent.ConcurrentDictionary<nint, int> _placeGen = new();
 
             private static void Place(nint hwnd, Rectangle r, int cell)
             {
@@ -576,6 +825,33 @@ namespace WndoLand
                     ShowWindow(hwnd, NCMDSHOW.SW_RESTORE);
                 }
 
+                Rectangle target = r;
+                if (!SetOuterFor(hwnd, target, cell, "placed")) return;
+
+                // The invisible-border offsets can change after we measure them (style strip landing late, an app
+                // re-laying itself out), leaving the window oversized; re-measure shortly after and correct it
+                int gen = _placeGen.AddOrUpdate(hwnd, 1, (_, g) => g + 1);
+                _ = Task.Run(async () =>
+                {
+                    for (int attempt = 1; attempt <= 3; attempt++)
+                    {
+                        await Task.Delay(150);
+                        if (_placeGen.GetValueOrDefault(hwnd) != gen || !IsWindow(hwnd) || IsIconic(hwnd) || !IsWindowVisible(hwnd)) return;
+                        if (DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, out RECT v, Marshal.SizeOf<RECT>()) != 0) return;
+                        if (Math.Abs(v.left - target.Left) <= 1 && Math.Abs(v.top - target.Top) <= 1
+                            && Math.Abs(v.right - target.Right) <= 1 && Math.Abs(v.bottom - target.Bottom) <= 1) return;
+
+                        Log.Warn($"Window missed its cell (attempt {attempt}): wanted {Describe.Rect(target.Left, target.Top, target.Right, target.Bottom)}, " +
+                                 $"visible is {Describe.Rect(v)}; correcting. {Describe.Window(hwnd)}");
+                        SetOuterFor(hwnd, target, cell, "corrected");
+                    }
+                });
+            }
+
+            // Converts the wanted visible rectangle to the outer rectangle SetWindowPos needs, using the window's current invisible borders
+            private static bool SetOuterFor(nint hwnd, Rectangle visibleTarget, int cell, string what)
+            {
+                var r = visibleTarget;
                 if (GetWindowRect(hwnd, out RECT outer)
                     && DwmGetWindowAttribute(hwnd, DWMWA_EXTENDED_FRAME_BOUNDS, out RECT visible, Marshal.SizeOf<RECT>()) == 0)
                 {
@@ -587,26 +863,11 @@ namespace WndoLand
                 }
 
                 if (SetWindowPos(hwnd, IntPtr.Zero, r.Left, r.Top, r.Width, r.Height, SWP_NOZORDER | SWP_NOACTIVATE | SWP_ASYNCWINDOWPOS))
-                    Log.Debug($"  cell {cell}: hwnd=0x{hwnd:X} -> {Describe.Rect(r.Left, r.Top, r.Right, r.Bottom)}");
-                else
-                    Log.Warn($"MoveWindow failed for hwnd=0x{hwnd:X} Win32 error {Marshal.GetLastWin32Error()}");
-            }
-
-            private static nint ResolveMonitor(Window w)
-            {
-                if (w.Monitor != 0 && TryGetMonitorRect(w.Monitor, out _)) return w.Monitor;
-                return w.Monitor = MonitorFromWindow(w.Hwnd, MONITOR_DEFAULTTONEAREST);
-            }
-
-            private static bool TryGetMonitorRect(nint monitor, out RECT rect)
-            {
-                var mi = new MONITORINFO { cbSize = Marshal.SizeOf<MONITORINFO>() };
-                if (GetMonitorInfo(monitor, ref mi))
                 {
-                    rect = mi.rcMonitor;
+                    Log.Debug($"  cell {cell}: hwnd=0x{hwnd:X} {what} -> {Describe.Rect(r.Left, r.Top, r.Right, r.Bottom)}");
                     return true;
                 }
-                rect = new RECT();
+                Log.Warn($"MoveWindow failed for hwnd=0x{hwnd:X} Win32 error {Marshal.GetLastWin32Error()}");
                 return false;
             }
 
@@ -618,7 +879,6 @@ namespace WndoLand
             private class Window(nint HWND)
             {
                 public nint Hwnd = HWND;
-                public nint Monitor;
                 public Rectangle Bounds;
 
                 public void Show()
