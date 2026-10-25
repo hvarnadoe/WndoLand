@@ -13,24 +13,51 @@ WndoLand runs quietly in the system tray and tiles your open windows into a grid
 - **Custom hotkeys:** launch an app or run a command with a key combination you choose.
 - **Per-app rules:** make certain apps float, or always open on a specific workspace.
 
-The app starts hidden in the tray. Open its window from the tray icon or with `Alt+Shift+W` to manage hotkeys and settings.
-
 ## Default hotkeys
+
+### Workspaces
 
 | Keys | Action |
 | --- | --- |
-| `Alt` + `1`–`0` | Switch to workspace |
-| `Alt+Shift` + `1`–`0` | Send window to workspace |
-| `Alt` + arrow keys | Focus window in that direction |
-| `Alt+Shift` + arrow keys | Swap window in that direction |
-| `Alt` + `Q` | Close window |
-| `Alt+Shift` + `Q` | Force close window (ends its process) |
+| `Alt` + `1`–`0` | Switch to workspace 1–10 (`0` is workspace 10) |
+| `Alt+Shift` + `1`–`0` | Send the active window to workspace 1–10 |
+
+### Windows
+
+| Keys | Action |
+| --- | --- |
+| `Alt` + arrow keys | Focus the window in that direction |
+| `Alt+Shift` + arrow keys | Swap the active window with its neighbour in that direction |
 | `Alt+Shift` + `F` | Toggle floating |
 | `Alt+Shift` + `Enter` | Toggle fullscreen |
-| `Alt+Shift` + `N` | Move window to the next monitor |
+| `Alt` + `Q` | Close window |
+| `Alt+Shift` + `Q` | Force close window (ends its process) |
+
+### Monitors
+
+| Keys | Action |
+| --- | --- |
+| `Ctrl+Alt` + arrow keys | Focus the monitor in that direction |
+| `Ctrl+Alt+Shift` + arrow keys | Send the active window to the monitor in that direction |
+| `Alt+Shift` + `N` | Send the active window to the next monitor |
+
+### Apps
+
+| Keys | Action |
+| --- | --- |
 | `Alt` + `W` | Launch Terminal |
-| `Alt+Shift` + `W` | Show or hide the WndoLand window |
+| `Alt+Shift` + `W` | Show or hide the WndoLand control panel |
+
+All of these can be changed and you can add your own from the control panel.
 
 ## Installing
 
-Download the most recent setup.exe from the releases tab and run it. By default it will be registered to start with windows this can be disabled in the settings. You can view the control panel with `Alt + Shift + W`.
+Download [WndoLandApp-win-Setup.exe from the latest release](https://github.com/hvarnadoe/WndoLand/releases/latest) and run it. By default it will be registered to start with windows and automatically update. These options can be disabled in the settings.
+
+## Recomendations
+
+By default, WndoLand is not set to run as administrator. This can be changed through the settings as well and I recommend enabling it. When it is disabled WndoLand will be unable to tile elevated windows such as task manager which can feel clunky.
+
+I also suggest using this alongside [powertoys](https://learn.microsoft.com/en-us/windows/powertoys/), specifically [power toys run](https://learn.microsoft.com/en-us/windows/powertoys/run), as the spotlight search works quite well with this system and allows you to easilly find the location of executables for creating hotkeys.
+
+I also like to set the taskbar to autohide as it gives more usable space on the screen and after getting used to WndoLand I felt like I didn't need it anymore. I hope you enjoy using my program!
