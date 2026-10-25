@@ -130,8 +130,18 @@ namespace WndoLand
             }
 
             var (monitor, workspace) = found.Value;
-            // Only the visible workspace of a monitor can hold the focused window
-            if (workspace != monitor.Active) return;
+            // A window on a hidden workspace got focus from outside (Alt+Tab, taskbar), so follow it there
+            if (workspace != monitor.Active)
+            {
+                int num = Array.IndexOf(monitor.Spaces, workspace) + 1;
+                Log.Info($"Focus went to hwnd=0x{target:X} on {monitor.Id} workspace {num}; switching to it");
+                _activeMonitor = monitor;
+                SetActiveWorkspace(num);
+                workspace.LastFocus = target;
+                if (!SetForegroundWindow(target))
+                    Log.Warn($"SetForegroundWindow refused for hwnd=0x{target:X} (foreground is now 0x{GetForegroundWindow():X})");
+                return;
+            }
 
             workspace.LastFocus = target;
             if (monitor != _activeMonitor)
