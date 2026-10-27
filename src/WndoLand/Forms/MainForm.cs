@@ -18,6 +18,7 @@ namespace WndoLand
         private readonly ActiveBorder _activeBorder;
         private List<Func<Task>> _keybindActions;
 
+        private readonly VmKeyboardHook _vmHook;
         readonly WinEventDelegate _callback;
         IntPtr _hook;
         IntPtr _foregroundHook;
@@ -42,6 +43,7 @@ namespace WndoLand
             Borders.RecoverFromCrash();
 
             _callback = OnWinEvent;
+            _vmHook = new VmKeyboardHook(Handle);
 
             var menu = new ContextMenuStrip();
             menu.Items.Add("Open", null, (_, _) => ShowWindow());
@@ -113,6 +115,7 @@ namespace WndoLand
 
         private void RegisterKeybinds(List<Keybinds> shortcuts)
         {
+            _vmHook.SetBindings(shortcuts);
             for (int i = 0; i < shortcuts.Count; i++)
             {
                 var kb = shortcuts[i];
@@ -210,6 +213,7 @@ namespace WndoLand
 
             Microsoft.Win32.SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
             Watchdog.Stop();
+            _vmHook.Dispose();
             Borders.RestoreAll();
             _updates.Dispose();
             _tray.Visible = false;
@@ -374,6 +378,23 @@ namespace WndoLand
             }
         }
 
+        /// <summary>Hooked only while VirtualBox is focused; reinstalled after it sets up its own hook so ours runs first.</summary>
+        private void UpdateVmHook(IntPtr foreground)
+        {
+            if (!VmKeyboardHook.IsVirtualBox(foreground))
+            {
+                _vmHook.Uninstall();
+                return;
+            }
+
+            _vmHook.Install();
+            _ = Task.Delay(300).ContinueWith(_ =>
+            {
+                if (IsHandleCreated && !IsDisposed)
+                    BeginInvoke(() => { if (VmKeyboardHook.IsVirtualBox(GetForegroundWindow())) _vmHook.Install(); });
+            });
+        }
+
         void OnWinEvent(IntPtr hook, uint evt, IntPtr hwnd, int idObject, int idChild, uint threadId, uint timeMs)
         {
             if (idObject != OBJID_WINDOW || idChild != CHILDID_SELF || hwnd == IntPtr.Zero) return;
@@ -382,6 +403,7 @@ namespace WndoLand
 
             if (evt == EVENT_SYSTEM_FOREGROUND)
             {
+                UpdateVmHook(hwnd);
                 _workspace.NotifyForegroundChanged(hwnd);
                 return;
             }
