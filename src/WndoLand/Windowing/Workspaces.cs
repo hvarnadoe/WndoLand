@@ -28,8 +28,9 @@ namespace WndoLand
             public int ActiveNum { get; set; } = 1;
             public Workspace Active => Spaces[ActiveNum - 1];
 
-            // Falls back to the primary screen if this monitor has been unplugged
-            public Rectangle Bounds => (Screen.AllScreens.FirstOrDefault(s => s.DeviceName == Id) ?? Screen.PrimaryScreen!).Bounds;
+            // Read fresh each time, in physical pixels; falls back to the primary monitor if this one has been unplugged
+            public Monitors.Info Info => Monitors.Find(Id) ?? Monitors.Primary;
+            public Rectangle Bounds => Info.Bounds;
         }
 
         private readonly List<MonitorSpace> _monitors = new();
@@ -45,7 +46,7 @@ namespace WndoLand
             _activeMonitor = Primary;
         }
 
-        private MonitorSpace Primary => _monitors.FirstOrDefault(m => m.Id == Screen.PrimaryScreen?.DeviceName) ?? _monitors[0];
+        private MonitorSpace Primary => _monitors.FirstOrDefault(m => m.Id == Monitors.Primary.DeviceName) ?? _monitors[0];
 
         private Workspace Active => _activeMonitor.Active;
 
@@ -63,7 +64,7 @@ namespace WndoLand
 
         private MonitorSpace MonitorUnder(nint hwnd)
         {
-            var screen = Screen.FromHandle(hwnd);
+            var screen = Monitors.FromWindow(hwnd);
             return _monitors.FirstOrDefault(m => m.Id == screen.DeviceName) ?? _activeMonitor;
         }
 
@@ -72,7 +73,7 @@ namespace WndoLand
         /// <summary>Adds monitors that appeared and moves the windows of ones that disappeared onto the primary monitor.</summary>
         private void SyncMonitors()
         {
-            var screens = Screen.AllScreens.OrderBy(s => s.Bounds.Left).ThenBy(s => s.Bounds.Top).ToList();
+            var screens = Monitors.All().OrderBy(s => s.Bounds.Left).ThenBy(s => s.Bounds.Top).ToList();
 
             foreach (var s in screens)
             {
@@ -161,11 +162,11 @@ namespace WndoLand
             next.Activate();
             if (old != next) old.Deactivate();
             monitor.ActiveNum = workspaceNum;
-            WorkspaceChanged?.Invoke(workspaceNum, monitor.Bounds);
+            WorkspaceChanged?.Invoke(workspaceNum, monitor.Info);
             Changed?.Invoke();
         }
 
-        public event Action<int, Rectangle>? WorkspaceChanged;
+        public event Action<int, Monitors.Info>? WorkspaceChanged;
 
         public event Action? Changed;
 
@@ -419,7 +420,7 @@ namespace WndoLand
                 Cursor.Position = Centre(dest.Bounds);
             }
 
-            WorkspaceChanged?.Invoke(dest.ActiveNum, dest.Bounds);
+            WorkspaceChanged?.Invoke(dest.ActiveNum, dest.Info);
             Changed?.Invoke();
         }
 
@@ -478,7 +479,7 @@ namespace WndoLand
             _activeMonitor = dest;
             SetForegroundWindow(target);
 
-            WorkspaceChanged?.Invoke(dest.ActiveNum, dest.Bounds);
+            WorkspaceChanged?.Invoke(dest.ActiveNum, dest.Info);
             Changed?.Invoke();
         }
 

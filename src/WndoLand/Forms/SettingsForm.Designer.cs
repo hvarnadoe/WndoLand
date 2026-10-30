@@ -30,8 +30,6 @@ namespace WndoLand
         {
             colorLabel = new Label();
             borderColorButton = new Button();
-            thicknessLabel = new Label();
-            borderThickness = new NumericUpDown();
             gapLabel = new Label();
             gapSize = new NumericUpDown();
             stripTitleBars = new CheckBox();
@@ -47,7 +45,6 @@ namespace WndoLand
             checkUpdatesButton = new Button();
             updateMsg = new Label();
             colorDialog = new ColorDialog();
-            ((System.ComponentModel.ISupportInitialize)borderThickness).BeginInit();
             ((System.ComponentModel.ISupportInitialize)gapSize).BeginInit();
             SuspendLayout();
             // 
@@ -71,29 +68,10 @@ namespace WndoLand
             borderColorButton.UseVisualStyleBackColor = false;
             borderColorButton.Click += borderColorButton_Click;
             // 
-            // thicknessLabel
-            // 
-            thicknessLabel.AutoSize = true;
-            thicknessLabel.Location = new Point(12, 54);
-            thicknessLabel.Name = "thicknessLabel";
-            thicknessLabel.Size = new Size(137, 15);
-            thicknessLabel.TabIndex = 2;
-            thicknessLabel.Text = "Border thickness (pixels):";
-            // 
-            // borderThickness
-            // 
-            borderThickness.Location = new Point(232, 52);
-            borderThickness.Maximum = new decimal(new int[] { 20, 0, 0, 0 });
-            borderThickness.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
-            borderThickness.Name = "borderThickness";
-            borderThickness.Size = new Size(100, 23);
-            borderThickness.TabIndex = 3;
-            borderThickness.Value = new decimal(new int[] { 2, 0, 0, 0 });
-            // 
             // gapLabel
             // 
             gapLabel.AutoSize = true;
-            gapLabel.Location = new Point(12, 89);
+            gapLabel.Location = new Point(12, 54);
             gapLabel.Name = "gapLabel";
             gapLabel.Size = new Size(169, 15);
             gapLabel.TabIndex = 4;
@@ -101,7 +79,7 @@ namespace WndoLand
             // 
             // gapSize
             // 
-            gapSize.Location = new Point(232, 87);
+            gapSize.Location = new Point(232, 52);
             gapSize.Name = "gapSize";
             gapSize.Size = new Size(100, 23);
             gapSize.TabIndex = 5;
@@ -109,7 +87,7 @@ namespace WndoLand
             // stripTitleBars
             // 
             stripTitleBars.AutoSize = true;
-            stripTitleBars.Location = new Point(12, 125);
+            stripTitleBars.Location = new Point(12, 90);
             stripTitleBars.Name = "stripTitleBars";
             stripTitleBars.Size = new Size(288, 19);
             stripTitleBars.TabIndex = 6;
@@ -119,7 +97,7 @@ namespace WndoLand
             // startWithWindows
             // 
             startWithWindows.AutoSize = true;
-            startWithWindows.Location = new Point(12, 152);
+            startWithWindows.Location = new Point(12, 117);
             startWithWindows.Name = "startWithWindows";
             startWithWindows.Size = new Size(128, 19);
             startWithWindows.TabIndex = 7;
@@ -129,7 +107,7 @@ namespace WndoLand
             // runElevated
             // 
             runElevated.AutoSize = true;
-            runElevated.Location = new Point(12, 179);
+            runElevated.Location = new Point(12, 144);
             runElevated.Name = "runElevated";
             runElevated.Size = new Size(286, 19);
             runElevated.TabIndex = 16;
@@ -138,7 +116,7 @@ namespace WndoLand
             // 
             // exitButton
             // 
-            exitButton.Location = new Point(12, 309);
+            exitButton.Location = new Point(12, 274);
             exitButton.Name = "exitButton";
             exitButton.Size = new Size(320, 28);
             exitButton.TabIndex = 17;
@@ -149,7 +127,7 @@ namespace WndoLand
             // autoUpdate
             // 
             autoUpdate.AutoSize = true;
-            autoUpdate.Location = new Point(12, 206);
+            autoUpdate.Location = new Point(12, 171);
             autoUpdate.Name = "autoUpdate";
             autoUpdate.Size = new Size(177, 19);
             autoUpdate.TabIndex = 12;
@@ -158,7 +136,7 @@ namespace WndoLand
             // 
             // editRulesButton
             // 
-            editRulesButton.Location = new Point(12, 241);
+            editRulesButton.Location = new Point(12, 206);
             editRulesButton.Name = "editRulesButton";
             editRulesButton.Size = new Size(320, 28);
             editRulesButton.TabIndex = 8;
@@ -168,7 +146,7 @@ namespace WndoLand
             // 
             // saveButton
             // 
-            saveButton.Location = new Point(176, 343);
+            saveButton.Location = new Point(176, 308);
             saveButton.Name = "saveButton";
             saveButton.Size = new Size(75, 23);
             saveButton.TabIndex = 9;
@@ -180,7 +158,7 @@ namespace WndoLand
             // cancelButton
             // 
             cancelButton.DialogResult = DialogResult.Cancel;
-            cancelButton.Location = new Point(257, 343);
+            cancelButton.Location = new Point(257, 308);
             cancelButton.Name = "cancelButton";
             cancelButton.Size = new Size(75, 23);
             cancelButton.TabIndex = 10;
@@ -191,7 +169,7 @@ namespace WndoLand
             // 
             settingsMsg.AutoSize = true;
             settingsMsg.ForeColor = Color.Firebrick;
-            settingsMsg.Location = new Point(12, 331);
+            settingsMsg.Location = new Point(12, 296);
             settingsMsg.Name = "settingsMsg";
             settingsMsg.Size = new Size(0, 15);
             settingsMsg.TabIndex = 11;
@@ -199,7 +177,7 @@ namespace WndoLand
             // versionLabel
             // 
             versionLabel.AutoSize = true;
-            versionLabel.Location = new Point(12, 360);
+            versionLabel.Location = new Point(12, 325);
             versionLabel.Name = "versionLabel";
             versionLabel.Size = new Size(0, 15);
             versionLabel.TabIndex = 13;
@@ -207,7 +185,7 @@ namespace WndoLand
             // 
             // checkUpdatesButton
             // 
-            checkUpdatesButton.Location = new Point(12, 275);
+            checkUpdatesButton.Location = new Point(12, 240);
             checkUpdatesButton.Name = "checkUpdatesButton";
             checkUpdatesButton.Size = new Size(320, 28);
             checkUpdatesButton.TabIndex = 14;
@@ -218,7 +196,7 @@ namespace WndoLand
             // updateMsg
             // 
             updateMsg.AutoSize = true;
-            updateMsg.Location = new Point(12, 311);
+            updateMsg.Location = new Point(12, 276);
             updateMsg.Name = "updateMsg";
             updateMsg.Size = new Size(0, 15);
             updateMsg.TabIndex = 15;
@@ -230,7 +208,7 @@ namespace WndoLand
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             CancelButton = cancelButton;
-            ClientSize = new Size(344, 378);
+            ClientSize = new Size(344, 343);
             Controls.Add(exitButton);
             Controls.Add(versionLabel);
             Controls.Add(updateMsg);
@@ -245,8 +223,6 @@ namespace WndoLand
             Controls.Add(stripTitleBars);
             Controls.Add(gapSize);
             Controls.Add(gapLabel);
-            Controls.Add(borderThickness);
-            Controls.Add(thicknessLabel);
             Controls.Add(borderColorButton);
             Controls.Add(colorLabel);
             FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -255,7 +231,6 @@ namespace WndoLand
             Name = "SettingsForm";
             StartPosition = FormStartPosition.CenterParent;
             Text = "WndoLand settings";
-            ((System.ComponentModel.ISupportInitialize)borderThickness).EndInit();
             ((System.ComponentModel.ISupportInitialize)gapSize).EndInit();
             ResumeLayout(false);
             PerformLayout();
@@ -265,8 +240,6 @@ namespace WndoLand
 
         private Label colorLabel;
         private Button borderColorButton;
-        private Label thicknessLabel;
-        private NumericUpDown borderThickness;
         private Label gapLabel;
         private NumericUpDown gapSize;
         private CheckBox stripTitleBars;

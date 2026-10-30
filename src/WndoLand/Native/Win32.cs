@@ -33,8 +33,11 @@ namespace WndoLand
         public delegate bool MonitorEnumProc(nint hMonitor, nint hdc, nint lprc, nint lParam);
         [DllImport("user32.dll")] public static extern bool EnumDisplayMonitors(nint hdc, nint clip, MonitorEnumProc proc, nint lParam);
 
-        [DllImport("user32.dll")]
-        public static extern bool GetMonitorInfo(nint hMonitor, ref MONITORINFO lpmi);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        public static extern bool GetMonitorInfo(nint hMonitor, ref MONITORINFOEX lpmi);
+        [DllImport("user32.dll")] public static extern nint MonitorFromPoint(Point pt, uint flags);
+        [DllImport("shcore.dll")] public static extern int GetDpiForMonitor(nint hMonitor, int dpiType, out uint dpiX, out uint dpiY);
+        public const int MDT_EFFECTIVE_DPI = 0;
 
         [DllImport("dwmapi.dll")]
         public static extern int DwmGetWindowAttribute(nint hwnd, int attr, out RECT value, int size);
@@ -73,20 +76,28 @@ namespace WndoLand
         public static extern int DwmSetWindowAttribute(nint hwnd, int attr, ref int value, int size);
         public const int DWMWA_TRANSITIONS_FORCEDISABLED = 3;
         public const int DWMWA_USE_IMMERSIVE_DARK_MODE = 20;
+        public const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+        public const int DWMWA_BORDER_COLOR = 34;
+        public const int DWMWCP_DEFAULT = 0;
+        public const int DWMWCP_ROUNDSMALL = 3;
+        public const int DWMWA_COLOR_DEFAULT = unchecked((int)0xFFFFFFFF);
         public const uint SWP_ASYNCWINDOWPOS = 0x4000;
         public const int DWMWA_CLOAKED = 14;
         public const int GWL_EXSTYLE = -20;
         public const int WS_EX_TOOLWINDOW = 0x00000080;
+        public const uint MONITOR_DEFAULTTOPRIMARY = 1;
         public const uint MONITOR_DEFAULTTONEAREST = 2;
+        public const uint MONITORINFOF_PRIMARY = 1;
         public const int DWMWA_EXTENDED_FRAME_BOUNDS = 9;
 
-        [StructLayout(LayoutKind.Sequential)]
-        public struct MONITORINFO
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+        public struct MONITORINFOEX
         {
             public int cbSize;
             public RECT rcMonitor;
             public RECT rcWork;
             public uint dwFlags;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string szDevice;
         }
         [StructLayout(LayoutKind.Sequential)]
         public readonly struct RECT

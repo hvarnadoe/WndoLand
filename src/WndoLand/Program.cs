@@ -7,6 +7,11 @@ namespace WndoLand
         [STAThread]
         static void Main()
         {
+            // Turns on per-monitor DPI awareness, so it must run before anything reads monitor sizes. WinForms caches
+            // Screen.AllScreens on first use, and a read while still DPI-unaware keeps scaled-down sizes for good
+            // (1600x1067 for a 2400x1600 screen at 150%), which left tiled windows filling only part of the screen.
+            ApplicationConfiguration.Initialize();
+
             VelopackApp.Build()
                 .OnFirstRun(_ => StartupRegistration.Set(true))
                 .OnBeforeUninstallFastCallback(_ => StartupRegistration.Set(false))
@@ -34,7 +39,6 @@ namespace WndoLand
             {
                 Log.LogStartup();
                 StartupRegistration.MigrateToTask();
-                ApplicationConfiguration.Initialize();
                 Application.Run(new MainForm());
                 Log.Info("Application exited normally");
             }

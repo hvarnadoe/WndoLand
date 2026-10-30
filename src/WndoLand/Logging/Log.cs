@@ -49,15 +49,21 @@ namespace WndoLand
         {
             using var me = Process.GetCurrentProcess();
             var asm = typeof(Log).Assembly.GetName();
+            var monitors = Monitors.All();
             Write(LogEventLevel.Information, null,
                 $"=== WndoLand {asm.Version} starting === pid={me.Id} elevated={IsElevated()} " +
                 $"os=\"{RuntimeInformation.OSDescription}\" runtime=\"{RuntimeInformation.FrameworkDescription}\" " +
                 $"arch={RuntimeInformation.ProcessArchitecture} cwd=\"{Environment.CurrentDirectory}\" " +
-                $"monitors={Screen.AllScreens.Length} logDir=\"{LogDirectory}\"", file, line, member);
+                $"dpiMode={Application.HighDpiMode} monitors={monitors.Count} logDir=\"{LogDirectory}\"", file, line, member);
 
-            foreach (var s in Screen.AllScreens)
+            // Without per-monitor awareness, sizes and positions on scaled displays get mixed up between scaled and real pixels
+            if (Application.HighDpiMode != HighDpiMode.PerMonitorV2)
+                Write(LogEventLevel.Warning, null,
+                    $"Not per-monitor DPI aware ({Application.HighDpiMode}); tiling may be wrong on displays scaled above 100%", file, line, member);
+
+            foreach (var m in monitors)
                 Write(LogEventLevel.Debug, null,
-                    $"Monitor {s.DeviceName} bounds={s.Bounds} work={s.WorkingArea} primary={s.Primary}", file, line, member);
+                    $"Monitor {m.DeviceName} bounds={m.Bounds} work={m.WorkArea} dpi={m.Dpi} ({m.ScalePercent}%) primary={m.Primary}", file, line, member);
         }
 
         private static bool IsElevated()

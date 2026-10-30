@@ -26,7 +26,6 @@ namespace WndoLand
 
             var s = Settings.Current;
             SetColor(s.BorderColorValue);
-            borderThickness.Value = Math.Clamp(s.BorderThickness, (int)borderThickness.Minimum, (int)borderThickness.Maximum);
             gapSize.Value = Math.Clamp(s.Gap, (int)gapSize.Minimum, (int)gapSize.Maximum);
             stripTitleBars.Checked = s.StripTitleBars;
             startWithWindows.Checked = StartupRegistration.IsEnabled;
@@ -109,7 +108,6 @@ namespace WndoLand
                 new Settings
                 {
                     BorderColor = $"#{_color.R:X2}{_color.G:X2}{_color.B:X2}",
-                    BorderThickness = (int)borderThickness.Value,
                     Gap = (int)gapSize.Value,
                     StripTitleBars = stripTitleBars.Checked,
                     AutoUpdate = autoUpdate.Checked

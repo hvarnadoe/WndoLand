@@ -9,7 +9,7 @@ WndoLand runs quietly in the system tray and tiles your open windows into a grid
 - **Tiling:** windows are laid out automatically as they open and close, and title bars and borders are removed so they sit flush.
 - **Workspaces:** ten workspaces, with hotkeys to switch between them and to send a window to another one.
 - **Window control:** focus, swap, float, fullscreen and close windows from the keyboard, and send them to another monitor.
-- **Active window highlight:** a thin coloured border shows which window has focus.
+- **Active window highlight:** the focused window's own frame is drawn in a colour you choose (Windows 11).
 - **Custom hotkeys:** launch an app or run a command with a key combination you choose.
 - **Per-app rules:** make certain apps float, or always open on a specific workspace.
 

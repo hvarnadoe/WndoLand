@@ -11,9 +11,6 @@ namespace WndoLand
         [JsonPropertyName("border_color")]
         public string BorderColor { get; set; } = "#4FC3F7";
 
-        [JsonPropertyName("border_thickness")]
-        public int BorderThickness { get; set; } = 2;
-
         [JsonPropertyName("strip_title_bars")]
         public bool StripTitleBars { get; set; } = true;
 
@@ -53,7 +50,7 @@ namespace WndoLand
         {
             File.WriteAllText(AppPaths.SettingsFile, JsonSerializer.Serialize(this, JsonOptions));
             Current = this;
-            Log.Info($"Saved settings: color={BorderColor} thickness={BorderThickness} strip={StripTitleBars} gap={Gap} autoUpdate={AutoUpdate}");
+            Log.Info($"Saved settings: color={BorderColor} strip={StripTitleBars} gap={Gap} autoUpdate={AutoUpdate}");
         }
     }
 }
